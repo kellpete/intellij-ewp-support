@@ -8,7 +8,7 @@
         <p>The main goal of this template is to speed up the setup phase of plugin development for both new and experienced developers by preconfiguring the project scaffold and CI, linking to the proper documentation pages, and keeping everything organized.</p>
     ]]></description>
 
-    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.clion</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 

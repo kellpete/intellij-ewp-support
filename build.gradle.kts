@@ -13,5 +13,6 @@ dependencies {
     intellijPlatform {
         clion("2026.2")
         testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.Plugin.CLion)
     }
 }
