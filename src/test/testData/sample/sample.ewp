@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <fileVersion>4</fileVersion>
+    <configuration>
+        <name>Debug</name>
+        <toolchain>
+            <name>ARM</name>
+        </toolchain>
+        <debug>1</debug>
+        <settings>
+            <name>General</name>
+            <archiveVersion>3</archiveVersion>
+            <!-- Removed: Many options, for compiler, linker etc-->
+        </settings>
+    </configuration>
+    <group>
+        <name>config</name>
+        <group>
+            <name>ra6m5</name>
+            <file>
+                <name>$PROJ_DIR$\..\config\ra6m5\option_setting_memory_init.h</name>
+            </file>
+        </group>
+        <file>
+            <name>$PROJ_DIR$\..\config\NodeSettings.hpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\config\ThreadSettings.hpp</name>
+        </file>
+    </group>
+    <group>
+        <name>src</name>
+        <group>
+            <name>services</name>
+            <group>
+                <name>parameter</name>
+                <file>
+                    <name>$PROJ_DIR$\..\src\services\parameter\RedundantParameters.cpp</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\src\services\parameter\RedundantParameters.hpp</name>
+                </file>
+            </group>
+        </group>
+        <file>
+            <name>$PROJ_DIR$\..\src\main.cpp</name>
+        </file>
+    </group>
+    <projectSettings>
+        <general>
+            <resolveSourceForBinaries>true</resolveSourceForBinaries>
+        </general>
+    </projectSettings>
+</project>

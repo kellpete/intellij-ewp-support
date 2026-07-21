@@ -1,0 +1,238 @@
+package com.github.kellpete.intellijewpsupport.toolWindow
+
+import com.github.kellpete.intellijewpsupport.MyBundle
+import com.github.kellpete.intellijewpsupport.model.EwpProject
+import com.github.kellpete.intellijewpsupport.service.EwpIndexService
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.components.service
+import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.ColoredTreeCellRenderer
+import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.treeStructure.SimpleTree
+import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.components.BorderLayoutPanel
+import com.intellij.util.ui.tree.TreeUtil
+import java.awt.BorderLayout
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import javax.swing.DefaultComboBoxModel
+import javax.swing.DefaultListCellRenderer
+import javax.swing.JButton
+import javax.swing.JComboBox
+import javax.swing.JList
+import javax.swing.JPanel
+import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.DefaultTreeModel
+
+class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
+
+    private val indexService = project.service<EwpIndexService>()
+    private val ewpComboBox = JComboBox<VirtualFile>()
+    private val tree = SimpleTree()
+    private val statusLabel = JBLabel("", JBLabel.LEFT)
+
+    init {
+        border = JBUI.Borders.empty(4)
+
+        ewpComboBox.renderer = object : DefaultListCellRenderer() {
+            override fun getListCellRendererComponent(
+                list: JList<*>?,
+                value: Any?,
+                index: Int,
+                isSelected: Boolean,
+                cellHasFocus: Boolean,
+            ) = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus).apply {
+                text = (value as? VirtualFile)?.name ?: MyBundle["ewpExplorer.noEwpSelected"]
+            }
+        }
+
+        val toolbar = JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.emptyBottom(4)
+            add(ewpComboBox, BorderLayout.CENTER)
+            add(JButton(AllIcons.Actions.Refresh).apply {
+                toolTipText = MyBundle["ewpExplorer.refresh"]
+                addActionListener {
+                    indexService.invalidateAll()
+                    reloadEwpFiles()
+                }
+            }, BorderLayout.EAST)
+        }
+
+        tree.setRootVisible(true)
+        tree.cellRenderer = EwpTreeCellRenderer()
+        tree.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                if (e.clickCount == 2) {
+                    handleDoubleClick(e)
+                }
+            }
+        })
+
+        ewpComboBox.addActionListener { reloadTree() }
+
+        add(toolbar, BorderLayout.NORTH)
+        add(JBScrollPane(tree), BorderLayout.CENTER)
+        add(statusLabel, BorderLayout.SOUTH)
+
+        reloadEwpFiles()
+    }
+
+    fun reloadEwpFiles() {
+        val previousSelection = ewpComboBox.selectedItem as? VirtualFile
+        ReadAction.nonBlocking<List<VirtualFile>> {
+            indexService.findEwpFiles()
+        }
+            .inSmartMode(project)
+            .finishOnUiThread(ModalityState.defaultModalityState()) { ewpFiles ->
+                applyEwpFiles(ewpFiles, previousSelection)
+            }
+            .submit(AppExecutorUtil.getAppExecutorService())
+    }
+
+    private fun applyEwpFiles(ewpFiles: List<VirtualFile>, previousSelection: VirtualFile?) {
+        ewpComboBox.model = DefaultComboBoxModel(ewpFiles.toTypedArray())
+        ewpComboBox.isEnabled = ewpFiles.isNotEmpty()
+
+        if (ewpFiles.isEmpty()) {
+            showEmptyState()
+            return
+        }
+
+        val selection = previousSelection?.takeIf { previous -> ewpFiles.any { it.path == previous.path } } ?: ewpFiles.first()
+        ewpComboBox.selectedItem = selection
+        reloadTree()
+    }
+
+    private fun reloadTree() {
+        val selectedEwp = ewpComboBox.selectedItem as? VirtualFile
+        if (selectedEwp == null) {
+            showEmptyState()
+            return
+        }
+
+        ReadAction.nonBlocking<EwpProject?> {
+            indexService.getProject(selectedEwp)
+        }
+            .inSmartMode(project)
+            .finishOnUiThread(ModalityState.defaultModalityState()) { ewpProject ->
+                applyTreeProject(selectedEwp, ewpProject)
+            }
+            .submit(AppExecutorUtil.getAppExecutorService())
+    }
+
+    private fun applyTreeProject(selectedEwp: VirtualFile, ewpProject: EwpProject?) {
+        if (ewpProject == null) {
+            clearTree()
+            statusLabel.text = MyBundle["ewpExplorer.parseError", selectedEwp.name]
+            return
+        }
+
+        setTreeProject(ewpProject)
+        updateStatus(ewpProject)
+    }
+
+    private fun setTreeProject(ewpProject: EwpProject) {
+        tree.model = EwpTreeStructure.buildTreeModel(ewpProject)
+        tree.setRootVisible(true)
+        TreeUtil.expandAll(tree)
+    }
+
+    private fun clearTree() {
+        tree.model = DefaultTreeModel(DefaultMutableTreeNode())
+    }
+
+    private fun showEmptyState() {
+        clearTree()
+        statusLabel.text = MyBundle["ewpExplorer.emptyState"]
+    }
+
+    private fun updateStatus(ewpProject: EwpProject) {
+        val issueCount = ewpProject.sortIssueCount
+        statusLabel.text = if (issueCount > 0) {
+            MyBundle["ewpExplorer.sortWarnings", issueCount]
+        } else {
+            MyBundle["ewpExplorer.noSortWarnings"]
+        }
+    }
+
+    private fun handleDoubleClick(e: MouseEvent) {
+        val path = tree.getPathForLocation(e.x, e.y) ?: return
+        val node = extractTreeNode(path.lastPathComponent) as? EwpTreeNode.FileNode ?: return
+        navigateToFile(node)
+    }
+
+    private fun navigateToFile(node: EwpTreeNode.FileNode) {
+        val resolvedPath = node.entry.resolvedPath ?: return
+        val virtualFile = LocalFileSystem.getInstance().findFileByPath(resolvedPath) ?: return
+        OpenFileDescriptor(project, virtualFile).navigate(true)
+    }
+
+    private fun extractTreeNode(pathComponent: Any?): EwpTreeNode? {
+        return when (pathComponent) {
+            is EwpTreeNode -> pathComponent
+            is DefaultMutableTreeNode -> pathComponent.userObject as? EwpTreeNode
+            else -> null
+        }
+    }
+}
+
+class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
+
+    override fun customizeCellRenderer(
+        tree: javax.swing.JTree,
+        value: Any?,
+        selected: Boolean,
+        expanded: Boolean,
+        leaf: Boolean,
+        row: Int,
+        hasFocus: Boolean,
+    ) {
+        val node = extractTreeNode(value) ?: run {
+            append(value?.toString() ?: "", SimpleTextAttributes.REGULAR_ATTRIBUTES)
+            return
+        }
+
+        append(node.displayName, SimpleTextAttributes.REGULAR_ATTRIBUTES)
+
+        when (node) {
+            is EwpTreeNode.Root -> {
+                icon = AllIcons.Nodes.Module
+                toolTipText = node.project.ewpFile.path
+            }
+            is EwpTreeNode.GroupNode -> {
+                icon = if (node.hasSortIssue) AllIcons.General.Warning else AllIcons.Nodes.Folder
+                toolTipText = if (node.hasSortIssue) {
+                    MyBundle["ewpExplorer.groupSortWarning", node.displayName]
+                } else {
+                    node.displayName
+                }
+            }
+            is EwpTreeNode.FileNode -> {
+                val resolvedPath = node.entry.resolvedPath
+                icon = if (resolvedPath != null) {
+                    com.intellij.openapi.fileTypes.FileTypeManager.getInstance()
+                        .getFileTypeByFileName(resolvedPath).icon
+                } else {
+                    AllIcons.General.Warning
+                }
+                toolTipText = resolvedPath ?: node.entry.rawPath
+            }
+        }
+    }
+
+    private fun extractTreeNode(value: Any?): EwpTreeNode? {
+        return when (value) {
+            is EwpTreeNode -> value
+            is DefaultMutableTreeNode -> value.userObject as? EwpTreeNode
+            else -> null
+        }
+    }
+}
