@@ -59,7 +59,8 @@ internal object EwpDomSortFixer {
         outputter.output(document, writer)
         val result = writer.toString()
         val normalized = collapseEmptyDataTags(if (result.endsWith("\n")) result else "$result\n")
-        return normalized
+        val trimmed = normalized.trimEnd('\n') + '\n'
+        return trimmed
     }
 
     private fun collapseEmptyDataTags(text: String): String {

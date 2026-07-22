@@ -34,7 +34,7 @@ class EwpParserTest : BasePlatformTestCase() {
         val ewpFile = myFixture.configureByFile("sample.ewp").virtualFile
         val ewpProject = EwpParser().parse(ewpFile)
 
-        assertEquals(7, countFiles(ewpProject.groups))
+        assertEquals(6, countFiles(ewpProject.groups))
     }
 
     fun testSampleEwpHasNoSortIssues() {
