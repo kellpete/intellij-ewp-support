@@ -31,11 +31,12 @@ Inside the xml file, on path project/group there is a hierarchical view of the p
 source files. Each group contains any number of subgroups and files.  The placeholder `$PROJ_DIR$` refers to the
 directory that contains the ewp file.
 
-When changing the ewp file (e.g. to fix sorting), make sure to not introduce unnecessary changes. In particular:
-- Do not use self-closing tags (use `<state></state>` instead of `<state />`)
+When changing the ewp file (e.g. to fix sorting), ensure the following formatting:
+- Use expanded form for empty elements in general (e.g. `<state></state>`)
+- Exception: empty `<data>` elements must use self-closing form: `<data />`
 - Do not remove the header `<?xml version="1.0" encoding="UTF-8"?>`
 - Do not remove the trailing linebreak (there is a linebrak after `</project>`)
-- Us 4 spaces per indentation level
+- Use 4 spaces per indentation level
 
 ## Sorting
 

@@ -12,7 +12,7 @@ object EwpSortFixer {
         WriteCommandAction.runWriteCommandAction(project) {
             val document = FileDocumentManager.getInstance().getDocument(ewpFile)
             val originalText = document?.text ?: VfsUtilCore.loadText(ewpFile)
-            val sortedText = EwpTextSortFixer.sortGroupsInText(originalText)
+            val sortedText = EwpDomSortFixer.sortAndFormat(originalText)
             if (sortedText == originalText) {
                 return@runWriteCommandAction
             }
