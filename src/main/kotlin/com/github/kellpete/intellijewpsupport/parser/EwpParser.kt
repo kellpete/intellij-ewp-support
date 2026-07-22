@@ -6,6 +6,7 @@ import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.model.EwpSortIssue
 import com.github.kellpete.intellijewpsupport.model.EwpSortValidator
 import com.github.kellpete.intellijewpsupport.path.EwpPathResolver
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -16,7 +17,7 @@ class EwpParser {
 
     fun parse(ewpFile: VirtualFile): EwpProject {
         val rootElement = try {
-            JDOMUtil.load(VfsUtilCore.loadText(ewpFile))
+            JDOMUtil.load(loadText(ewpFile))
         } catch (e: Exception) {
             throw IOException("Failed to parse EWP file ${ewpFile.path}", e)
         }
@@ -33,6 +34,11 @@ class EwpParser {
             groups = groups,
             sortIssues = sortIssues,
         )
+    }
+
+    private fun loadText(ewpFile: VirtualFile): String {
+        val document = FileDocumentManager.getInstance().getDocument(ewpFile)
+        return document?.text ?: VfsUtilCore.loadText(ewpFile)
     }
 
     private fun parseGroup(

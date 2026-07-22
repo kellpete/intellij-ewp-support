@@ -2,6 +2,7 @@ package com.github.kellpete.intellijewpsupport.toolWindow
 
 import com.github.kellpete.intellijewpsupport.MyBundle
 import com.github.kellpete.intellijewpsupport.model.EwpProject
+import com.github.kellpete.intellijewpsupport.parser.EwpSortFixer
 import com.github.kellpete.intellijewpsupport.service.EwpIndexService
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ModalityState
@@ -38,6 +39,9 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private val ewpComboBox = JComboBox<VirtualFile>()
     private val tree = SimpleTree()
     private val statusLabel = JBLabel("", JBLabel.LEFT)
+    private val sortWarningLabel = JBLabel("", AllIcons.General.Warning, JBLabel.LEFT)
+    private val sortWarningPanel = createSortWarningPanel()
+    private val treeContainer = BorderLayoutPanel()
 
     init {
         border = JBUI.Borders.empty(4)
@@ -78,11 +82,27 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         ewpComboBox.addActionListener { reloadTree() }
 
+        treeContainer.add(sortWarningPanel, BorderLayout.NORTH)
+        treeContainer.add(JBScrollPane(tree), BorderLayout.CENTER)
+
         add(toolbar, BorderLayout.NORTH)
-        add(JBScrollPane(tree), BorderLayout.CENTER)
+        add(treeContainer, BorderLayout.CENTER)
         add(statusLabel, BorderLayout.SOUTH)
 
         reloadEwpFiles()
+    }
+
+    private fun createSortWarningPanel(): JPanel {
+        val fixButton = JButton(MyBundle["ewpExplorer.fixSorting"]).apply {
+            addActionListener { fixSortingForSelectedEwp() }
+        }
+
+        return JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.emptyBottom(4)
+            isVisible = false
+            add(sortWarningLabel, BorderLayout.CENTER)
+            add(fixButton, BorderLayout.EAST)
+        }
     }
 
     fun reloadEwpFiles() {
@@ -131,12 +151,14 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private fun applyTreeProject(selectedEwp: VirtualFile, ewpProject: EwpProject?) {
         if (ewpProject == null) {
             clearTree()
+            hideSortWarning()
             statusLabel.text = MyBundle["ewpExplorer.parseError", selectedEwp.name]
             return
         }
 
+        statusLabel.text = ""
         setTreeProject(ewpProject)
-        updateStatus(ewpProject)
+        updateSortWarning(ewpProject)
     }
 
     private fun setTreeProject(ewpProject: EwpProject) {
@@ -151,16 +173,34 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
     private fun showEmptyState() {
         clearTree()
+        hideSortWarning()
         statusLabel.text = MyBundle["ewpExplorer.emptyState"]
     }
 
-    private fun updateStatus(ewpProject: EwpProject) {
+    private fun updateSortWarning(ewpProject: EwpProject) {
         val issueCount = ewpProject.sortIssueCount
-        statusLabel.text = if (issueCount > 0) {
-            MyBundle["ewpExplorer.sortWarnings", issueCount]
-        } else {
-            MyBundle["ewpExplorer.noSortWarnings"]
+        if (issueCount <= 0) {
+            hideSortWarning()
+            return
         }
+
+        sortWarningLabel.text = MyBundle["ewpExplorer.sortWarning", issueCount]
+        sortWarningPanel.isVisible = true
+        treeContainer.revalidate()
+        treeContainer.repaint()
+    }
+
+    private fun hideSortWarning() {
+        sortWarningPanel.isVisible = false
+        treeContainer.revalidate()
+        treeContainer.repaint()
+    }
+
+    private fun fixSortingForSelectedEwp() {
+        val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
+        EwpSortFixer.fixSorting(selectedEwp, project)
+        indexService.invalidate(selectedEwp)
+        reloadTree()
     }
 
     private fun handleDoubleClick(e: MouseEvent) {
@@ -208,12 +248,8 @@ class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
                 toolTipText = node.project.ewpFile.path
             }
             is EwpTreeNode.GroupNode -> {
-                icon = if (node.hasSortIssue) AllIcons.General.Warning else AllIcons.Nodes.Folder
-                toolTipText = if (node.hasSortIssue) {
-                    MyBundle["ewpExplorer.groupSortWarning", node.displayName]
-                } else {
-                    node.displayName
-                }
+                icon = AllIcons.Nodes.Folder
+                toolTipText = node.displayName
             }
             is EwpTreeNode.FileNode -> {
                 val resolvedPath = node.entry.resolvedPath

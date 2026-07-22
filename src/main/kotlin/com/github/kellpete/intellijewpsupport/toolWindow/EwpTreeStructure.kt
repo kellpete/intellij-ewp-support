@@ -16,7 +16,6 @@ sealed interface EwpTreeNode {
     data class GroupNode(
         val group: EwpGroup,
         val groupPath: List<String>,
-        val hasSortIssue: Boolean,
     ) : EwpTreeNode {
         override val displayName: String = group.name
     }
@@ -44,12 +43,12 @@ object EwpTreeStructure {
     fun getChildren(node: EwpTreeNode, ewpProject: EwpProject): List<EwpTreeNode> {
         return when (node) {
             is EwpTreeNode.Root -> ewpProject.groups.map { group ->
-                toGroupNode(ewpProject, group, listOf(group.name))
+                EwpTreeNode.GroupNode(group, listOf(group.name))
             }
 
             is EwpTreeNode.GroupNode -> {
                 val childGroups = node.group.groups.map { group ->
-                    toGroupNode(ewpProject, group, node.groupPath + group.name)
+                    EwpTreeNode.GroupNode(group, node.groupPath + group.name)
                 }
                 val childFiles = node.group.files.map { EwpTreeNode.FileNode(it) }
                 childGroups + childFiles
@@ -59,11 +58,4 @@ object EwpTreeStructure {
         }
     }
 
-    private fun toGroupNode(project: EwpProject, group: EwpGroup, groupPath: List<String>): EwpTreeNode.GroupNode {
-        return EwpTreeNode.GroupNode(
-            group = group,
-            groupPath = groupPath,
-            hasSortIssue = project.hasSortIssue(groupPath),
-        )
-    }
 }

@@ -7,9 +7,6 @@ data class EwpProject(
     val groups: List<EwpGroup>,
     val sortIssues: List<EwpSortIssue>,
 ) {
-    fun hasSortIssue(groupPath: List<String>): Boolean =
-        sortIssues.any { it.groupPath == groupPath }
-
     val sortIssueCount: Int
         get() = sortIssues.map { it.groupPath }.distinct().size
 }

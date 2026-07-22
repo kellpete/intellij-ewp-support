@@ -22,7 +22,7 @@ object EwpSortValidator {
         if (!isAlphabeticallySorted(group.groups.map { it.name })) {
             issues += EwpSortIssue(path, EwpSortIssueType.SUBGROUPS_NOT_SORTED)
         }
-        if (!isAlphabeticallySorted(group.files.map { it.rawPath })) {
+        if (!isAlphabeticallySorted(group.files.map { it.displayName })) {
             issues += EwpSortIssue(path, EwpSortIssueType.FILES_NOT_SORTED)
         }
 
