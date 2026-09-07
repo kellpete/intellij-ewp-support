@@ -13,6 +13,23 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
+        <fileType name="EWP"
+                  implementationClass="com.github.kellpete.intellijewpsupport.ewp.EwpFileType"
+                  fieldName="INSTANCE"
+                  language="Ewp"
+                  extensions="ewp"/>
+
+        <lang.parserDefinition language="Ewp"
+                               implementationClass="com.github.kellpete.intellijewpsupport.ewp.EwpParserDefinition"/>
+
+        <lang.syntaxHighlighterFactory language="Ewp"
+                                       implementationClass="com.github.kellpete.intellijewpsupport.ewp.EwpSyntaxHighlighterFactory"/>
+
+        <lang.formatter language="Ewp"
+                        implementationClass="com.github.kellpete.intellijewpsupport.ewp.formatter.EwpFormattingModelBuilder"/>
+
+        <postFormatProcessor implementation="com.github.kellpete.intellijewpsupport.ewp.formatter.EwpPostFormatProcessor"/>
+
         <toolWindow factoryClass="com.github.kellpete.intellijewpsupport.toolWindow.EwpExplorerToolWindowFactory"
                     id="EwpExplorer"
                     anchor="right"/>
