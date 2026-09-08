@@ -6,12 +6,15 @@ import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.GridBagConstraints
-import java.awt.GridBagLayout
+import java.awt.Dimension
+import javax.swing.Box
+import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.ScrollPaneConstants
 
 class AddToEwpDialog(
     private val project: Project,
@@ -30,36 +33,56 @@ class AddToEwpDialog(
     }
 
     override fun createCenterPanel(): JComponent {
-        val panel = JPanel(GridBagLayout())
-        val constraints = GridBagConstraints().apply {
-            gridx = 0
-            gridy = 0
-            anchor = GridBagConstraints.WEST
-            insets = JBUI.insets(2, 0)
-            weightx = 1.0
-            fill = GridBagConstraints.HORIZONTAL
+        val panel = JPanel(BorderLayout(0, JBUI.scale(8)))
+
+        val header = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            alignmentX = JComponent.LEFT_ALIGNMENT
+            add(JBLabel(MyBundle["addToEwp.dialog.filesLabel"]).apply {
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            })
+            add(Box.createVerticalStrut(JBUI.scale(2)))
+            add(JBLabel(newFiles.joinToString(", ") { it.name }).apply {
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            })
+            add(Box.createVerticalStrut(JBUI.scale(8)))
+            add(JBLabel(MyBundle["addToEwp.dialog.ewpLabel"]).apply {
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            })
+        }
+        panel.add(header, BorderLayout.NORTH)
+
+        val checkboxPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            border = JBUI.Borders.empty(2, 0)
+            for ((_, checkbox) in ewpCheckboxes) {
+                checkbox.alignmentX = JComponent.LEFT_ALIGNMENT
+                checkbox.maximumSize = Dimension(Int.MAX_VALUE, checkbox.preferredSize.height)
+                add(checkbox)
+            }
+        }
+        // Keep rows at natural height when the viewport is taller than the list.
+        val listWrapper = JPanel(BorderLayout()).apply {
+            add(checkboxPanel, BorderLayout.NORTH)
         }
 
-        panel.add(JBLabel(MyBundle["addToEwp.dialog.filesLabel"]), constraints)
-        constraints.gridy++
-
-        val fileSummary = newFiles.joinToString(", ") { it.name }
-        panel.add(JBLabel(fileSummary), constraints)
-        constraints.gridy++
-
-        panel.add(JBLabel(MyBundle["addToEwp.dialog.ewpLabel"]), constraints.apply {
-            insets = JBUI.insets(8, 0, 2, 0)
-        })
-        constraints.gridy++
-
-        for ((_, checkbox) in ewpCheckboxes) {
-            panel.add(checkbox, constraints)
-            constraints.gridy++
+        val rowHeight = ewpCheckboxes.firstOrNull()?.second?.preferredSize?.height
+            ?: JBUI.scale(22)
+        val visibleRows = minOf(10, maxOf(ewpCheckboxes.size, 1))
+        val scrollPane = JBScrollPane(
+            listWrapper,
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+            ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER,
+        ).apply {
+            border = JBUI.Borders.empty()
+            preferredSize = Dimension(
+                JBUI.scale(360),
+                rowHeight * visibleRows + JBUI.scale(4),
+            )
         }
+        panel.add(scrollPane, BorderLayout.CENTER)
 
-        val wrapper = JPanel(BorderLayout())
-        wrapper.add(panel, BorderLayout.NORTH)
-        return wrapper
+        return panel
     }
 
     override fun doOKAction() {

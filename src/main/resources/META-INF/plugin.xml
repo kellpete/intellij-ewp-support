@@ -33,5 +33,7 @@
         <toolWindow factoryClass="com.github.kellpete.intellijewpsupport.toolWindow.EwpExplorerToolWindowFactory"
                     id="EwpExplorer"
                     anchor="right"/>
+
+        <postStartupActivity implementation="com.github.kellpete.intellijewpsupport.EwpPluginStartupActivity"/>
     </extensions>
 </idea-plugin>
