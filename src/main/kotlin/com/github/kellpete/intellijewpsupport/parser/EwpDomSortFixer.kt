@@ -9,7 +9,7 @@ import java.io.ByteArrayInputStream
 import java.io.StringWriter
 import java.nio.charset.StandardCharsets
 
-internal object EwpDomSortFixer {
+object EwpDomSortFixer {
 
     fun sortAndFormat(text: String): String {
         val document = JDOMUtil.loadDocument(ByteArrayInputStream(text.toByteArray(StandardCharsets.UTF_8)))

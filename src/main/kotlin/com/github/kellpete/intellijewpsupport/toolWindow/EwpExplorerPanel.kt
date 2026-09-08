@@ -1,6 +1,7 @@
 package com.github.kellpete.intellijewpsupport.toolWindow
 
 import com.github.kellpete.intellijewpsupport.MyBundle
+import com.github.kellpete.intellijewpsupport.ewp.addfiles.EwpProjectChangeListener
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.parser.EwpSortFixer
 import com.github.kellpete.intellijewpsupport.service.EwpIndexService
@@ -81,6 +82,12 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         })
 
         ewpComboBox.addActionListener { reloadTree() }
+
+        project.messageBus.connect().subscribe(EwpProjectChangeListener.TOPIC, object : EwpProjectChangeListener {
+            override fun onEwpProjectsChanged() {
+                reloadTree()
+            }
+        })
 
         treeContainer.add(sortWarningPanel, BorderLayout.NORTH)
         treeContainer.add(JBScrollPane(tree), BorderLayout.CENTER)
