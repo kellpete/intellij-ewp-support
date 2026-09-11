@@ -1,9 +1,18 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.changelog")
+}
+
+// NO_COMPATIBILITY: no Kotlin stubs for interface defaults (avoids Plugin Verifier
+// flagging ToolWindowFactory.isApplicable / manage / getIcon as overridden).
+kotlin {
+    compilerOptions {
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+    }
 }
 
 dependencies {
