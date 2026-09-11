@@ -22,7 +22,7 @@ object EwpFileWriter {
         if (additions.isEmpty()) return
 
         WriteCommandAction.runWriteCommandAction(project) {
-            val document = FileDocumentManager.getInstance().getDocument(ewpFile, project) ?: return@runWriteCommandAction
+            val document = FileDocumentManager.getInstance().getDocument(ewpFile) ?: return@runWriteCommandAction
             val ewpDirectory = ewpFile.parent.path
             val updatedText = addFilesToXml(document.text, ewpDirectory, additions)
             if (updatedText != document.text) {

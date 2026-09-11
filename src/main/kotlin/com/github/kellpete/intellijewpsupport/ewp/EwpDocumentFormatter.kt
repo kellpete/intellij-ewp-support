@@ -40,7 +40,7 @@ object EwpDocumentFormatter {
     fun fixSorting(ewpFile: VirtualFile, project: Project) {
         WriteCommandAction.runWriteCommandAction(project) {
             val fdm = FileDocumentManager.getInstance()
-            val document = fdm.getDocument(ewpFile, project) ?: return@runWriteCommandAction
+            val document = fdm.getDocument(ewpFile) ?: return@runWriteCommandAction
             if (!applySortAndFormat(document, ewpFile)) {
                 return@runWriteCommandAction
             }
