@@ -1,11 +1,17 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.kellpete.intellijewpsupport</id>
-    <name>IAR EWP Support</name>
+    <name>EWP Project Sync</name>
     <vendor>kellpete</vendor>
     <description><![CDATA[
-        <p>Support for IAR EWARM project files (<code>.ewp</code>) in CLion.</p>
-        <p>Explore EWP group and file hierarchies in a dedicated tool window.</p>
+    <p>Keep <code>.ewp</code> project files in sync with CLion.</p>
+    <ul>
+      <li>Reformat <code>.ewp</code> files to restore alphabetical group and file order</li>
+      <li>When creating files or classes, optionally add them to selected <code>.ewp</code> projects</li>
+      <li>Browse groups and files in the EWP Explorer tool window</li>
+    </ul>
+    <p>Unofficial plugin for <code>.ewp</code> projects used with IAR Embedded Workbench for Arm (EWARM).
+    Not affiliated with IAR Systems.</p>
     ]]></description>
 
     <depends>com.intellij.modules.clion</depends>
@@ -28,7 +34,8 @@
         <lang.formatter language="Ewp"
                         implementationClass="com.github.kellpete.intellijewpsupport.ewp.formatter.EwpFormattingModelBuilder"/>
 
-        <postFormatProcessor implementation="com.github.kellpete.intellijewpsupport.ewp.formatter.EwpPostFormatProcessor"/>
+        <postFormatProcessor
+                implementation="com.github.kellpete.intellijewpsupport.ewp.formatter.EwpPostFormatProcessor"/>
 
         <toolWindow factoryClass="com.github.kellpete.intellijewpsupport.toolWindow.EwpExplorerToolWindowFactory"
                     id="EwpExplorer"
