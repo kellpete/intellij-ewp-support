@@ -6,10 +6,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.vfs.VirtualFile
-import org.jdom.Document
 import org.jdom.Element
-import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets
 
 object EwpFileWriter {
 
@@ -35,8 +32,7 @@ object EwpFileWriter {
     fun addFilesToXml(xml: String, ewpDirectory: String, additions: List<FileAddition>): String {
         if (additions.isEmpty()) return xml
 
-        val document: Document = JDOMUtil.loadDocument(ByteArrayInputStream(xml.toByteArray(StandardCharsets.UTF_8)))
-        val root = document.rootElement
+        val root = JDOMUtil.load(xml)
         require(root.name == "project") { "Root element must be <project>, was <${root.name}>" }
 
         val existingPaths = collectExistingRawPaths(root).toMutableSet()
@@ -50,7 +46,7 @@ object EwpFileWriter {
             existingPaths += encodedPath
         }
 
-        return EwpDomSortFixer.sortAndFormat(documentToString(document))
+        return EwpDomSortFixer.sortAndFormat(root)
     }
 
     private fun collectExistingRawPaths(root: Element): Set<String> {
@@ -86,10 +82,5 @@ object EwpFileWriter {
         group.addContent(Element("name").setText(name))
         parent.addContent(group)
         return group
-    }
-
-    private fun documentToString(document: Document): String {
-        val outputter = org.jdom.output.XMLOutputter()
-        return outputter.outputString(document)
     }
 }

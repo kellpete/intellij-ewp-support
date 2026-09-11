@@ -3,20 +3,15 @@ package com.github.kellpete.intellijewpsupport.parser
 import com.intellij.openapi.util.JDOMUtil
 import org.jdom.Document
 import org.jdom.Element
-import org.jdom.output.Format
-import org.jdom.output.XMLOutputter
-import java.io.ByteArrayInputStream
-import java.io.StringWriter
-import java.nio.charset.StandardCharsets
 
 object EwpDomSortFixer {
 
-    fun sortAndFormat(text: String): String {
-        val document = JDOMUtil.loadDocument(ByteArrayInputStream(text.toByteArray(StandardCharsets.UTF_8)))
-        val root = document.rootElement
+    fun sortAndFormat(text: String): String = sortAndFormat(JDOMUtil.load(text))
+
+    fun sortAndFormat(root: Element): String {
         require(root.name == "project") { "Root element must be <project>, was <${root.name}>" }
         sortContainerChildren(root)
-        return formatDocument(document)
+        return formatRoot(root)
     }
 
     private fun sortContainerChildren(container: Element) {
@@ -47,29 +42,44 @@ object EwpDomSortFixer {
         return if (lastSlash >= 0) path.substring(lastSlash + 1) else path
     }
 
-    private fun formatDocument(document: Document): String {
-        val format = Format.getPrettyFormat()
-            .setIndent("    ")
-            .setExpandEmptyElements(true)
-            .setEncoding("UTF-8")
-            .setLineSeparator("\n")
-        val outputter = XMLOutputter(format)
-
-        val writer = StringWriter()
-        outputter.output(document, writer)
-        val result = writer.toString()
-        val normalized = collapseEmptyDataTags(if (result.endsWith("\n")) result else "$result\n")
-        val trimmed = normalized.trimEnd('\n') + '\n'
-        return trimmed
+    private fun formatRoot(root: Element): String {
+        val document = root.document ?: Document(root)
+        return postProcess(JDOMUtil.writeDocument(document, "\n"))
     }
 
-    private fun collapseEmptyDataTags(text: String): String {
-        return text
-            .replace(DATA_EXPANDED) { match ->
-                val attributes = match.groupValues[1].trim()
-                if (attributes.isEmpty()) "<data />" else "<data $attributes />"
+    private fun postProcess(xml: String): String {
+        return xml
+            .let(::expandSelfClosingTags)
+            .let(::collapseEmptyDataTags)
+            .let(::expandIndentToFourSpaces)
+            .trimEnd('\n') + '\n'
+    }
+
+    private fun expandSelfClosingTags(xml: String): String =
+        xml.replace(SELF_CLOSING) { match ->
+            val name = match.groupValues[1]
+            val attributes = match.groupValues[2].trim()
+            if (attributes.isEmpty()) "<$name></$name>" else "<$name $attributes></$name>"
+        }
+
+    private fun collapseEmptyDataTags(text: String): String =
+        text.replace(DATA_EXPANDED) { match ->
+            val attributes = match.groupValues[1].trim()
+            if (attributes.isEmpty()) "<data />" else "<data $attributes />"
+        }
+
+    private fun expandIndentToFourSpaces(xml: String): String =
+        xml.lineSequence().joinToString("\n") { line ->
+            val spaces = line.takeWhile { it == ' ' }.length
+            if (spaces == 0) {
+                line
+            } else {
+                val depth = spaces / PLATFORM_INDENT_WIDTH
+                "    ".repeat(depth) + line.substring(spaces)
             }
-    }
+        }
 
+    private const val PLATFORM_INDENT_WIDTH = 2
+    private val SELF_CLOSING = Regex("""<([A-Za-z_][\w.-]*)([^>]*)/>""")
     private val DATA_EXPANDED = Regex("<data(\\s[^>]*)?>\\s*</data>")
 }
