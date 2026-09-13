@@ -2,16 +2,32 @@
 <idea-plugin>
     <id>com.github.kellpete.intellijewpsupport</id>
     <name>EWP Project Sync</name>
-    <vendor>kellpete</vendor>
+    <vendor>SalPeter</vendor>
     <description><![CDATA[
-    <p>Keep <code>.ewp</code> project files in sync with CLion.</p>
+    <p>Keep <code>*.ewp</code> project files (from IAR EWARM) correct and in sync with changes in CLion, by avoiding
+    manual, error-prone changes in the xml
+    </p>
+    <h2>Features</h2>
     <ul>
-      <li>Reformat <code>.ewp</code> files to restore alphabetical group and file order</li>
-      <li>When creating files or classes, optionally add them to selected <code>.ewp</code> projects</li>
-      <li>Browse groups and files in the EWP Explorer tool window</li>
+        <li><strong>Sort on Reformat:</strong> The file lists in the <code>.ewp</code> project file are sorted
+            correctly, like EWARM does
+        </li>
+        <li><strong>Add New Files to ewp:</strong> When creating new source files in the IDE, you can choose to add
+            them to the EWP project file too. The plugin tries to find the best file group based on existing files in
+            the ewp project
+        </li>
+        <li><strong>Work With Multiple ewp Files:</strong> The plugin detects all ewp files in the project tree and
+            considers them when appropriate (e.g. when adding new files)
+        </li>
+        <li><strong>Browse</strong> groups and files in the EWP Explorer tool window</li>
     </ul>
-    <p>Unofficial plugin for <code>.ewp</code> projects used with IAR Embedded Workbench for Arm (EWARM).
-    Not affiliated with IAR Systems.</p>
+    <h2>What this plugin is not</h2>
+    <p>This plugin can <strong>NOT</strong> load ewp files as a project to compile them. You still need to load a
+        project by the means supported by CLion (e.g. Cmake, compilation database)</p>
+    <h2>Legal Notice</h2>
+    <p>This is an unofficial plugin for <code>.ewp</code> files used with IAR Embedded
+        Workbench for Arm (EWARM).
+        This plugin is not affiliated with IAR Systems.</p>
     ]]></description>
 
     <depends>com.intellij.modules.clion</depends>

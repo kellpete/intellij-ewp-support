@@ -9,7 +9,7 @@ class EwpFileType : LanguageFileType(EwpLanguage) {
 
     override fun getName(): String = "EWP"
 
-    override fun getDescription(): String = "IAR EWARM project file"
+    override fun getDescription(): String = "EWARM project"
 
     override fun getDefaultExtension(): String = "ewp"
 

@@ -93,7 +93,7 @@ class EwpDomSortFixerTest {
 
         val output = EwpDomSortFixer.sortAndFormat(input)
 
-        assertTrue(output.contains("<data />") || output.contains("<data/>"))
+        assertTrue(output.contains("<data />"))
         assertFalse(output.contains("<data></data>"))
     }
 
