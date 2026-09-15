@@ -29,6 +29,8 @@ class AddToEwpDialog(
 
     init {
         title = MyBundle["addToEwp.dialog.title"]
+        setCancelButtonText(MyBundle["addToEwp.dialog.cancel"])
+        setOKButtonText(MyBundle["addToEwp.dialog.ok"])
         init()
     }
 
