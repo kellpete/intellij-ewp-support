@@ -1,6 +1,5 @@
 package com.github.kellpete.intellijewpsupport.ewp.addfiles
 
-import com.github.kellpete.intellijewpsupport.MyBundle
 import com.github.kellpete.intellijewpsupport.service.EwpIndexService
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
@@ -15,6 +14,13 @@ import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.util.Alarm
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Offers to add newly created C/C++ sources to EWP projects.
+ *
+ * Mirrors the VCS "Add Files" confirmation: only IDE-created files (e.g. New C++ Class /
+ * Source / Header) are considered. External appearances such as git branch switches arrive
+ * as VFS refresh events and are ignored.
+ */
 @Service(Service.Level.PROJECT)
 class EwpNewSourceFileListener(private val project: Project) : Disposable {
 
@@ -27,8 +33,8 @@ class EwpNewSourceFileListener(private val project: Project) : Disposable {
                 if (project.isDisposed) return
 
                 val createdFiles = events.filterIsInstance<VFileCreateEvent>()
+                    .filter { event -> shouldConsider(event) }
                     .mapNotNull { it.file }
-                    .filter { file -> shouldConsider(file) }
 
                 if (createdFiles.isEmpty()) return
 
@@ -38,9 +44,13 @@ class EwpNewSourceFileListener(private val project: Project) : Disposable {
         })
     }
 
-    private fun shouldConsider(file: VirtualFile): Boolean {
+    private fun shouldConsider(event: VFileCreateEvent): Boolean {
+        // Same distinction as VCS "when files are created": ignore external/refresh creates
+        // (git checkout, sync from disk, etc.).
+        if (event.isFromRefresh) return false
+
+        val file = event.file ?: return false
         if (!EwpSourceFileExtensions.isSourceFile(file)) return false
-        if (file.extension?.equals("ewp", ignoreCase = true) == true) return false
 
         val fileIndex = ProjectRootManager.getInstance(project).fileIndex
         return fileIndex.isInContent(file)
