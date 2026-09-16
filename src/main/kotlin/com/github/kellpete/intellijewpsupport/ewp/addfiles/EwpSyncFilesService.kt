@@ -25,13 +25,18 @@ object EwpSyncFilesService {
         var changed = false
 
         for (ewpFile in ewpFiles) {
-            val ewpProject = indexService.getProject(ewpFile) ?: continue
-            val pathsToRemove = collectMatchingListedPaths(ewpProject, ewpFile, normalizedTargets)
-            if (pathsToRemove.isEmpty()) continue
+            // Always include the deleted paths themselves so removal still works when the
+            // parse cache is stale (e.g. right after add-to-ewp). Expand via the model so
+            // directory deletes still remove every listed file underneath.
+            val pathsToRemove = linkedSetOf<String>().apply { addAll(normalizedTargets) }
+            indexService.getProject(ewpFile)?.let { ewpProject ->
+                pathsToRemove.addAll(collectMatchingListedPaths(ewpProject, ewpFile, normalizedTargets))
+            }
 
-            EwpFileWriter.removeFiles(ewpFile, project, pathsToRemove)
-            indexService.invalidate(ewpFile)
-            changed = true
+            if (EwpFileWriter.removeFiles(ewpFile, project, pathsToRemove)) {
+                indexService.invalidate(ewpFile)
+                changed = true
+            }
         }
 
         if (changed) {
@@ -116,7 +121,7 @@ object EwpSyncFilesService {
     private fun isPathListed(ewpProject: EwpProject, ewpFile: VirtualFile, normalizedAbsolutePath: String): Boolean {
         var found = false
         collectResolvedPaths(ewpProject.groups, ewpFile) { resolved ->
-            if (normalizePath(resolved) == normalizedAbsolutePath) {
+            if (FileUtil.pathsEqual(normalizePath(resolved), normalizedAbsolutePath)) {
                 found = true
             }
         }
@@ -128,6 +133,7 @@ object EwpSyncFilesService {
         ewpFile: VirtualFile,
         normalizedAbsolutePath: String,
     ): List<String>? = findGroupPathForFile(ewpProject.groups, ewpFile, normalizedAbsolutePath, emptyList())
+
     private fun findGroupPathForFile(
         groups: List<EwpGroup>,
         ewpFile: VirtualFile,
@@ -138,7 +144,7 @@ object EwpSyncFilesService {
             val groupPath = parentPath + group.name
             for (file in group.files) {
                 val resolved = file.resolvedPath ?: EwpPathResolver.resolve(ewpFile, file.rawPath)
-                if (resolved != null && normalizePath(resolved) == normalizedAbsolutePath) {
+                if (resolved != null && FileUtil.pathsEqual(normalizePath(resolved), normalizedAbsolutePath)) {
                     return groupPath
                 }
             }
@@ -164,14 +170,18 @@ object EwpSyncFilesService {
     }
 
     private fun pathEqualsOrUnder(path: String, targetOrDirectory: String): Boolean {
-        if (path == targetOrDirectory) return true
-        val prefix = targetOrDirectory.trimEnd('/') + "/"
-        return path.startsWith(prefix)
+        if (FileUtil.pathsEqual(path, targetOrDirectory)) return true
+        return FileUtil.startsWith(path, targetOrDirectory)
     }
 
     private fun findProjectRoot(absolutePaths: List<String>, contentRoots: List<String>): String? {
         val candidates = contentRoots.filter { root ->
-            absolutePaths.all { path -> normalizePath(path).startsWith(normalizePath(root)) }
+            absolutePaths.all { path ->
+                val normalizedPath = normalizePath(path)
+                val normalizedRoot = normalizePath(root)
+                normalizedPath.startsWith(normalizedRoot) ||
+                    FileUtil.pathsEqual(normalizedPath, normalizedRoot)
+            }
         }
         return candidates.minByOrNull { it.length }
     }

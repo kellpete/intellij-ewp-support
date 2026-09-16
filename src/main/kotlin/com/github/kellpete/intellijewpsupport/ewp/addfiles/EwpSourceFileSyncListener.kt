@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap
 @Service(Service.Level.PROJECT)
 class EwpSourceFileSyncListener(private val project: Project) : Disposable {
 
+    private val lock = Any()
     private val pendingCreates = ConcurrentHashMap.newKeySet<VirtualFile>()
     private val pendingDeletes = ConcurrentHashMap.newKeySet<String>()
     private val pendingMoves = ConcurrentHashMap<String, String>()
@@ -36,17 +37,6 @@ class EwpSourceFileSyncListener(private val project: Project) : Disposable {
 
     init {
         project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
-            override fun before(events: List<VFileEvent>) {
-                if (project.isDisposed) return
-                for (event in events) {
-                    if (event !is VFileDeleteEvent || event.isFromRefresh) continue
-                    val file = event.file
-                    if (!isInContent(file)) continue
-                    if (file.isDirectory || EwpSourceFileExtensions.isSourceFile(file)) {
-                        pendingDeletes.add(normalizePath(file.path))
-                    }
-                }
-            }
 
             override fun after(events: List<VFileEvent>) {
                 if (project.isDisposed) return
@@ -55,22 +45,32 @@ class EwpSourceFileSyncListener(private val project: Project) : Disposable {
 
                 for (event in events) {
                     when (event) {
+                        is VFileDeleteEvent -> {
+                            if (collectDelete(event)) {
+                                schedule = true
+                            }
+                        }
+
                         is VFileCreateEvent -> {
                             if (!shouldConsiderCreate(event)) continue
                             val file = event.file ?: continue
                             pendingCreates.add(file)
                             schedule = true
                         }
+
                         is VFileMoveEvent -> {
                             if (!shouldConsiderMove(event)) continue
                             val file = event.file
                             val oldPath = normalizePath(event.oldParent.path + "/" + file.name)
                             val newPath = normalizePath(file.path)
-                            pendingDeletes.remove(oldPath)
-                            pendingDeletes.remove(newPath)
-                            pendingMoves[oldPath] = newPath
+                            synchronized(lock) {
+                                pendingDeletes.remove(oldPath)
+                                pendingDeletes.remove(newPath)
+                                pendingMoves[oldPath] = newPath
+                            }
                             schedule = true
                         }
+
                         is VFilePropertyChangeEvent -> {
                             if (!shouldConsiderRename(event)) continue
                             val file = event.file
@@ -78,9 +78,11 @@ class EwpSourceFileSyncListener(private val project: Project) : Disposable {
                             val parentPath = file.parent?.path ?: continue
                             val oldPath = normalizePath("$parentPath/$oldName")
                             val newPath = normalizePath(file.path)
-                            pendingDeletes.remove(oldPath)
-                            pendingDeletes.remove(newPath)
-                            pendingMoves[oldPath] = newPath
+                            synchronized(lock) {
+                                pendingDeletes.remove(oldPath)
+                                pendingDeletes.remove(newPath)
+                                pendingMoves[oldPath] = newPath
+                            }
                             schedule = true
                         }
                     }
@@ -97,7 +99,30 @@ class EwpSourceFileSyncListener(private val project: Project) : Disposable {
         })
     }
 
+    private fun collectDelete(event: VFileDeleteEvent): Boolean {
+        if (!shouldConsiderDelete(event)) return false
+        val path = normalizePath(event.path)
+        pendingDeletes.add(path)
+        return true
+    }
+
+    private fun shouldConsiderDelete(event: VFileDeleteEvent): Boolean {
+        if (event.isFromRefresh) return false
+        val file = event.file
+        if (file.isDirectory) {
+            return isInContentRoot(event.path) || (file.isValid && isInContent(file))
+        }
+        if (!EwpSourceFileExtensions.isSourceFilePath(event.path) &&
+            !(file.isValid && EwpSourceFileExtensions.isSourceFile(file))
+        ) {
+            return false
+        }
+        return isInContentRoot(event.path) || (file.isValid && isInContent(file))
+    }
+
     private fun shouldConsiderCreate(event: VFileCreateEvent): Boolean {
+        // Same distinction as VCS "when files are created": ignore external/refresh creates
+        // (git checkout, sync from disk, etc.).
         if (event.isFromRefresh) return false
         val file = event.file ?: return false
         if (!EwpSourceFileExtensions.isSourceFile(file)) return false
@@ -128,6 +153,15 @@ class EwpSourceFileSyncListener(private val project: Project) : Disposable {
         return fileIndex.isInContent(file)
     }
 
+    private fun isInContentRoot(path: String): Boolean {
+        val normalized = normalizePath(path)
+        return ProjectRootManager.getInstance(project).contentRoots.any { root ->
+            val rootPath = normalizePath(root.path)
+            FileUtil.pathsEqual(normalized, rootPath) ||
+                    FileUtil.startsWith(normalized, rootPath)
+        }
+    }
+
     private fun scheduleFlush() {
         alarm.cancelAllRequests()
         alarm.addRequest({ flushPending() }, DEBOUNCE_MS)
@@ -136,16 +170,20 @@ class EwpSourceFileSyncListener(private val project: Project) : Disposable {
     private fun flushPending() {
         if (project.isDisposed) return
 
-        val deletes = pendingDeletes.toList()
-        pendingDeletes.clear()
-
-        val moves = pendingMoves.entries.map { (oldPath, newPath) ->
-            EwpSyncFilesService.PathMove(oldPath, newPath)
+        val (deletes, moves, creates) = synchronized(lock) {
+            val drainedDeletes = pendingDeletes.toList()
+            pendingDeletes.clear()
+            val drainedMoves = pendingMoves.entries.map { (oldPath, newPath) ->
+                EwpSyncFilesService.PathMove(oldPath, newPath)
+            }
+            pendingMoves.clear()
+            val deleteSet = drainedDeletes.toSet()
+            val drainedCreates = pendingCreates.filter { file ->
+                file.isValid && normalizePath(file.path) !in deleteSet
+            }
+            pendingCreates.clear()
+            Triple(drainedDeletes, drainedMoves, drainedCreates)
         }
-        pendingMoves.clear()
-
-        val creates = pendingCreates.toList()
-        pendingCreates.clear()
 
         if (deletes.isNotEmpty()) {
             EwpSyncFilesService.removePathsFromAllEwps(project, deletes)

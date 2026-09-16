@@ -168,6 +168,29 @@ class EwpFileWriterTest {
         assertTrue(output.contains("<name>src</name>"))
     }
 
+    @Test
+    fun removesCppAndHppTogether() {
+        val input = loadSampleEwp()
+        val withPair = EwpFileWriter.addFilesToXml(
+            input,
+            "/project/firmware",
+            listOf(
+                EwpFileWriter.FileAddition("/project/src/Foo.cpp", listOf("src")),
+                EwpFileWriter.FileAddition("/project/src/Foo.hpp", listOf("src")),
+            ),
+        )
+
+        val output = EwpFileWriter.removeFilesToXml(
+            withPair,
+            "/project/firmware",
+            listOf("/project/src/Foo.cpp", "/project/src/Foo.hpp"),
+        )
+
+        assertFalse(output.contains("Foo.cpp"))
+        assertFalse(output.contains("Foo.hpp"))
+        assertTrue(output.contains("main.cpp"))
+    }
+
     private fun loadSampleEwp(): String {
         val path = Paths.get("src/test/testData/sample/sample.ewp").toAbsolutePath()
         return Files.readString(path)

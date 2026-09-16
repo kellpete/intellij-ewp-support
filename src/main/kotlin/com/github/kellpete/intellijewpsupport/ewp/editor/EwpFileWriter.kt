@@ -37,9 +37,10 @@ object EwpFileWriter {
         }
     }
 
-    fun removeFiles(ewpFile: VirtualFile, project: Project, absolutePaths: Collection<String>) {
-        if (absolutePaths.isEmpty()) return
+    fun removeFiles(ewpFile: VirtualFile, project: Project, absolutePaths: Collection<String>): Boolean {
+        if (absolutePaths.isEmpty()) return false
 
+        val changed = booleanArrayOf(false)
         WriteCommandAction.runWriteCommandAction(project) {
             val document = FileDocumentManager.getInstance().getDocument(ewpFile) ?: return@runWriteCommandAction
             val ewpDirectory = ewpFile.parent.path
@@ -47,8 +48,10 @@ object EwpFileWriter {
             if (updatedText != document.text) {
                 document.setText(updatedText)
                 FileDocumentManager.getInstance().saveDocument(document)
+                changed[0] = true
             }
         }
+        return changed[0]
     }
 
     fun moveFiles(ewpFile: VirtualFile, project: Project, moves: List<FileMove>) {
@@ -147,7 +150,7 @@ object EwpFileWriter {
                 "file" -> {
                     val rawPath = child.getChildTextTrim("name") ?: continue
                     val resolved = EwpPathResolver.resolve(ewpDirectory, rawPath)?.let { normalizePath(it) }
-                    if (resolved != null && normalizedTargets.contains(resolved)) {
+                    if (resolved != null && normalizedTargets.any { FileUtil.pathsEqual(it, resolved) }) {
                         container.removeContent(child)
                         removed = true
                     }
