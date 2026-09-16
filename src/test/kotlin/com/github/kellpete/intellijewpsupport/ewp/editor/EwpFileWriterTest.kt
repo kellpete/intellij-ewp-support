@@ -84,6 +84,90 @@ class EwpFileWriterTest {
         assertTrue(output.indexOf("main.cpp") < output.indexOf("zebra.cpp"))
     }
 
+    @Test
+    fun removesExistingFile() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.removeFilesToXml(
+            input,
+            "/project/firmware",
+            listOf("/project/src/main.cpp"),
+        )
+
+        assertFalse(output.contains("main.cpp"))
+        assertTrue(output.contains("RedundantParameters.cpp"))
+    }
+
+    @Test
+    fun removeIsNoOpWhenPathAbsent() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.removeFilesToXml(
+            input,
+            "/project/firmware",
+            listOf("/project/src/missing.cpp"),
+        )
+
+        assertEquals(input, output)
+    }
+
+    @Test
+    fun prunesEmptyGroupsAfterRemove() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.removeFilesToXml(
+            input,
+            "/project/firmware",
+            listOf(
+                "/project/src/services/parameter/RedundantParameters.cpp",
+                "/project/src/services/parameter/RedundantParameters.hpp",
+            ),
+        )
+
+        assertFalse(output.contains("RedundantParameters"))
+        assertFalse(output.contains("<name>parameter</name>"))
+        assertFalse(output.contains("<name>services</name>"))
+        assertTrue(output.contains("<name>src</name>"))
+        assertTrue(output.contains("main.cpp"))
+    }
+
+    @Test
+    fun movesFileToNewGroup() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.moveFilesToXml(
+            input,
+            "/project/firmware",
+            listOf(
+                EwpFileWriter.FileMove(
+                    oldAbsolutePath = "/project/src/main.cpp",
+                    newAbsolutePath = "/project/src/tools/main.cpp",
+                    newGroupPath = listOf("src", "tools"),
+                ),
+            ),
+        )
+
+        assertFalse(output.contains("\$PROJ_DIR\$\\..\\src\\main.cpp"))
+        assertTrue(output.contains("\$PROJ_DIR\$\\..\\src\\tools\\main.cpp"))
+        assertTrue(output.contains("<name>tools</name>"))
+    }
+
+    @Test
+    fun renameKeepsProvidedGroup() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.moveFilesToXml(
+            input,
+            "/project/firmware",
+            listOf(
+                EwpFileWriter.FileMove(
+                    oldAbsolutePath = "/project/src/main.cpp",
+                    newAbsolutePath = "/project/src/app.cpp",
+                    newGroupPath = listOf("src"),
+                ),
+            ),
+        )
+
+        assertFalse(output.contains("main.cpp"))
+        assertTrue(output.contains("\$PROJ_DIR\$\\..\\src\\app.cpp"))
+        assertTrue(output.contains("<name>src</name>"))
+    }
+
     private fun loadSampleEwp(): String {
         val path = Paths.get("src/test/testData/sample/sample.ewp").toAbsolutePath()
         return Files.readString(path)

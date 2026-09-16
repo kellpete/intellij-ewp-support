@@ -16,6 +16,13 @@
             them to the EWP project file too. The plugin tries to find the best file group based on existing files in
             the ewp project
         </li>
+        <li><strong>Delete / Move / Rename Sync:</strong> When you delete, move, or rename source files in the IDE,
+            matching entries in every <code>.ewp</code> that lists them are updated automatically (including group
+            remapping on move and pruning empty groups on delete)
+        </li>
+        <li><strong>Clickable Paths:</strong> Ctrl/Cmd-click a <code>$PROJ_DIR$</code> path inside an
+            <code>.ewp</code> file to open the referenced source file
+        </li>
         <li><strong>Work With Multiple ewp Files:</strong> The plugin detects all ewp files in the project tree and
             considers them when appropriate (e.g. when adding new files)
         </li>

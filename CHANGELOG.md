@@ -3,5 +3,15 @@
 # intellij-ewp-support Changelog
 
 ## [Unreleased]
+
+## [Unreleased]
+
+- Initial release
+- Fix: Do not trigger "add to ewp" dialog when files are added externally (e.g. git checkout)
+- Delete, move, rename support
+
+## [0.0.1] - 2026-09-15
+
 ### Added
-- Initial scaffold created from [IntelliJ Platform Plugin Template](https://github.com/JetBrains/intellij-platform-plugin-template)
+
+- Beta Testing
