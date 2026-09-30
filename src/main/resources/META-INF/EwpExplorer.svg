@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Peter Saladin. All rights reserved.
+
+  This artwork is proprietary. Unauthorized copying, distribution,
+  modification, or use in other software plugins is strictly prohibited.
+-->
+<svg width="16" height="16" fill="none" version="1.1" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+    <g fill="#6c707e">
+        <path d="m12.346 3.0253-9.3932 9.2371 0.70101 0.71286 9.3932-9.2371z" stop-color="#000000"/>
+        <circle id="path1-8" transform="rotate(.47996)" cx="13.066" cy="2.9334" r="1.9998" fill="#6c707e"
+                stroke-width="0"/>
+        <use transform="translate(-10.082 9.9149)" xlink:href="#path1-8"/>
+        <path d="m8.0037 3.8896c-2.2537-0.01888-4.1089 1.8055-4.1278 4.0592-0.003742 0.44625 0.063663 0.87589 0.19349 1.2797l1.044-1.0243c-0.00609-0.080539-0.00822-0.16281-0.00753-0.24512 0.013313-1.589 1.2986-2.8529 2.8875-2.8396 0.08231 6.954e-4 0.16454 0.00434 0.24495 0.011641l1.0417-1.0267c-0.40162-0.13657-0.83007-0.21116-1.2763-0.2149zm3.8657 2.8481-1.044 1.0243c6e-3 0.080601 0.0082 0.16281 0.0075 0.24512-0.013291 1.589-1.2985 2.8529-2.8875 2.8396-0.082288-6.21e-4 -0.16453-0.004425-0.24495-0.01164l-1.0416 1.0267c0.40161 0.13657 0.83006 0.21116 1.2763 0.2149 2.2537 0.01887 4.1089-1.8055 4.1278-4.0592 0.0037-0.44625-0.06368-0.87589-0.1935-1.2797z"
+              stop-color="#000000" stroke-width="1.23"/>
+        <circle transform="rotate(.47996)" cx="8.0667" cy="7.9329" r="1.6047"/>
+    </g>
+</svg>
