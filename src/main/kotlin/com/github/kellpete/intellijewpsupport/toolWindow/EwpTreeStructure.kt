@@ -24,7 +24,10 @@ sealed interface EwpTreeNode {
         override fun toString(): String = displayName
     }
 
-    data class FileNode(val entry: EwpFileEntry) : EwpTreeNode {
+    data class FileNode(
+        val entry: EwpFileEntry,
+        val groupPath: List<String> = emptyList(),
+    ) : EwpTreeNode {
         override val displayName: String = entry.displayName
         override fun toString(): String = displayName
     }
@@ -55,11 +58,19 @@ object EwpTreeStructure {
                 val childGroups = node.group.groups.map { group ->
                     EwpTreeNode.GroupNode(group, node.groupPath + group.name)
                 }
-                val childFiles = node.group.files.map { EwpTreeNode.FileNode(it) }
+                val childFiles = node.group.files.map { EwpTreeNode.FileNode(it, node.groupPath) }
                 childGroups + childFiles
             }
 
             is EwpTreeNode.FileNode -> emptyList()
+        }
+    }
+
+    fun extractNode(pathComponent: Any?): EwpTreeNode? {
+        return when (pathComponent) {
+            is EwpTreeNode -> pathComponent
+            is DefaultMutableTreeNode -> pathComponent.userObject as? EwpTreeNode
+            else -> null
         }
     }
 

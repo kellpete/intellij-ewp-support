@@ -29,10 +29,12 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListCellRenderer
+import javax.swing.DropMode
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
@@ -76,6 +78,24 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         tree.setRootVisible(true)
         tree.cellRenderer = EwpTreeCellRenderer()
+        tree.dragEnabled = true
+        tree.dropMode = DropMode.ON
+        tree.transferHandler = EwpTreeTransferHandler(
+            project = project,
+            getSelectedEwpFile = { ewpComboBox.selectedItem as? VirtualFile },
+            onNodesMoved = { targetGroupPath, movedGroupNames ->
+                val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return@EwpTreeTransferHandler
+                indexService.invalidate(selectedEwp)
+                val selectPath = if (targetGroupPath.isEmpty() && movedGroupNames.isNotEmpty()) {
+                    listOf(movedGroupNames.first())
+                } else if (movedGroupNames.size == 1 && targetGroupPath.isNotEmpty()) {
+                    targetGroupPath + movedGroupNames.first()
+                } else {
+                    targetGroupPath.ifEmpty { null }
+                }
+                reloadTree(selectGroupPath = selectPath)
+            },
+        )
         tree.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 if (e.clickCount == 2) {
@@ -88,7 +108,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         project.messageBus.connect().subscribe(EwpProjectChangeListener.TOPIC, object : EwpProjectChangeListener {
             override fun onEwpProjectsChanged() {
-                reloadTree()
+                SwingUtilities.invokeLater { reloadTree() }
             }
         })
 
@@ -138,6 +158,11 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     }
 
     fun reloadEwpFiles() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater { reloadEwpFiles() }
+            return
+        }
+
         val previousSelection = ewpComboBox.selectedItem as? VirtualFile
         ReadAction.nonBlocking<List<VirtualFile>> {
             indexService.findEwpFiles()
@@ -164,6 +189,11 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     }
 
     private fun reloadTree(selectGroupPath: List<String>? = null) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater { reloadTree(selectGroupPath) }
+            return
+        }
+
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile
         if (selectedEwp == null) {
             showEmptyState()
@@ -297,13 +327,8 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         OpenFileDescriptor(project, virtualFile).navigate(true)
     }
 
-    private fun extractTreeNode(pathComponent: Any?): EwpTreeNode? {
-        return when (pathComponent) {
-            is EwpTreeNode -> pathComponent
-            is DefaultMutableTreeNode -> pathComponent.userObject as? EwpTreeNode
-            else -> null
-        }
-    }
+    private fun extractTreeNode(pathComponent: Any?): EwpTreeNode? =
+        EwpTreeStructure.extractNode(pathComponent)
 }
 
 class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
@@ -320,6 +345,15 @@ class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
         val node = extractTreeNode(value) ?: run {
             append(value?.toString() ?: "", SimpleTextAttributes.REGULAR_ATTRIBUTES)
             return
+        }
+
+        val dropLocation = tree.dropLocation
+        val isDropTarget = dropLocation != null &&
+            dropLocation.childIndex == -1 &&
+            tree.getRowForPath(dropLocation.path) == row
+
+        if (isDropTarget) {
+            setPaintFocusBorder(true)
         }
 
         append(node.displayName, SimpleTextAttributes.REGULAR_ATTRIBUTES)
@@ -346,11 +380,6 @@ class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
         }
     }
 
-    private fun extractTreeNode(value: Any?): EwpTreeNode? {
-        return when (value) {
-            is EwpTreeNode -> value
-            is DefaultMutableTreeNode -> value.userObject as? EwpTreeNode
-            else -> null
-        }
-    }
+    private fun extractTreeNode(value: Any?): EwpTreeNode? =
+        EwpTreeStructure.extractNode(value)
 }

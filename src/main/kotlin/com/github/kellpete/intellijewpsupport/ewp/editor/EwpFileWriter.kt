@@ -23,6 +23,17 @@ object EwpFileWriter {
         val newGroupPath: List<String>,
     )
 
+    data class TreeFileMove(
+        val rawPath: String,
+        val sourceGroupPath: List<String>,
+        val targetGroupPath: List<String>,
+    )
+
+    data class TreeGroupMove(
+        val sourceGroupPath: List<String>,
+        val targetParentGroupPath: List<String>,
+    )
+
     fun addFiles(ewpFile: VirtualFile, project: Project, additions: List<FileAddition>) {
         if (additions.isEmpty()) return
 
@@ -86,6 +97,104 @@ object EwpFileWriter {
             }
         }
         return changed[0]
+    }
+
+    fun moveNodes(
+        ewpFile: VirtualFile,
+        project: Project,
+        fileMoves: List<TreeFileMove> = emptyList(),
+        groupMoves: List<TreeGroupMove> = emptyList(),
+    ): Boolean {
+        if (fileMoves.isEmpty() && groupMoves.isEmpty()) return false
+
+        val changed = booleanArrayOf(false)
+        WriteCommandAction.runWriteCommandAction(project) {
+            val document = FileDocumentManager.getInstance().getDocument(ewpFile) ?: return@runWriteCommandAction
+            val updatedText = moveNodesInXml(document.text, fileMoves, groupMoves)
+            if (updatedText != document.text) {
+                document.setText(updatedText)
+                FileDocumentManager.getInstance().saveDocument(document)
+                changed[0] = true
+            }
+        }
+        return changed[0]
+    }
+
+    fun moveNodesInXml(
+        xml: String,
+        fileMoves: List<TreeFileMove> = emptyList(),
+        groupMoves: List<TreeGroupMove> = emptyList(),
+    ): String {
+        if (fileMoves.isEmpty() && groupMoves.isEmpty()) return xml
+
+        val root = JDOMUtil.load(xml)
+        require(root.name == "project") { "Root element must be <project>, was <${root.name}>" }
+
+        var changed = false
+        for (move in fileMoves) {
+            if (moveFileInXml(root, move.rawPath, move.sourceGroupPath, move.targetGroupPath)) {
+                changed = true
+            }
+        }
+        for (move in groupMoves) {
+            if (moveGroupInXml(root, move.sourceGroupPath, move.targetParentGroupPath)) {
+                changed = true
+            }
+        }
+
+        if (!changed) return xml
+        return EwpDomSortFixer.sortAndFormat(root)
+    }
+
+    fun moveFileInXml(
+        root: Element,
+        rawPath: String,
+        sourceGroupPath: List<String>,
+        targetGroupPath: List<String>,
+    ): Boolean {
+        if (sourceGroupPath == targetGroupPath) return false
+        if (targetGroupPath.isEmpty()) return false
+
+        val sourceGroup = findGroup(root, sourceGroupPath) ?: return false
+        val targetGroup = findOrCreateGroup(root, targetGroupPath)
+
+        val normalizedRaw = normalizeRawPath(rawPath)
+        val fileElement = sourceGroup.children
+            .filter { it.name == "file" }
+            .firstOrNull { normalizeRawPath(it.getChildTextTrim("name").orEmpty()) == normalizedRaw }
+            ?: return false
+
+        val alreadyInTarget = targetGroup.children
+            .filter { it.name == "file" }
+            .any { normalizeRawPath(it.getChildTextTrim("name").orEmpty()) == normalizedRaw }
+        if (alreadyInTarget) return false
+
+        sourceGroup.removeContent(fileElement)
+        addContentToContainer(targetGroup, fileElement)
+        return true
+    }
+
+    fun moveGroupInXml(
+        root: Element,
+        sourceGroupPath: List<String>,
+        targetParentGroupPath: List<String>,
+    ): Boolean {
+        if (sourceGroupPath.isEmpty()) return false
+        if (isDescendantOrSelf(sourceGroupPath, targetParentGroupPath)) return false
+        if (sourceGroupPath.dropLast(1) == targetParentGroupPath) return false
+
+        val sourceParentPath = sourceGroupPath.dropLast(1)
+        val groupName = sourceGroupPath.last()
+
+        val sourceParent = if (sourceParentPath.isEmpty()) root else findGroup(root, sourceParentPath) ?: return false
+        val groupElement = findChildGroup(sourceParent, groupName) ?: return false
+
+        val targetParent = if (targetParentGroupPath.isEmpty()) root else findOrCreateGroup(root, targetParentGroupPath)
+        if (findChildGroup(targetParent, groupName) != null) return false
+
+        sourceParent.removeContent(groupElement)
+        addContentToContainer(targetParent, groupElement)
+        return true
     }
 
     fun createGroupInXml(xml: String, groupPath: List<String>): String {
@@ -225,7 +334,7 @@ object EwpFileWriter {
         }
     }
 
-    private fun findOrCreateGroup(root: Element, groupPath: List<String>): Element {
+    fun findOrCreateGroup(root: Element, groupPath: List<String>): Element {
         var current = root
         for (name in groupPath) {
             current = findChildGroup(current, name) ?: createChildGroup(current, name)
@@ -233,15 +342,46 @@ object EwpFileWriter {
         return current
     }
 
-    private fun findChildGroup(parent: Element, name: String): Element? =
+    fun findGroup(root: Element, groupPath: List<String>): Element? {
+        var current: Element = root
+        for (name in groupPath) {
+            current = findChildGroup(current, name) ?: return null
+        }
+        return current
+    }
+
+    fun findChildGroup(parent: Element, name: String): Element? =
         parent.children
             .filter { it.name == "group" }
             .firstOrNull { it.getChildTextTrim("name") == name }
 
+    fun isDescendantOrSelf(ancestor: List<String>, candidate: List<String>): Boolean {
+        if (candidate.size < ancestor.size) return false
+        return candidate.take(ancestor.size) == ancestor
+    }
+
+    private fun normalizeRawPath(path: String): String =
+        path.trim().replace('\\', '/')
+
+    private fun addContentToContainer(container: Element, element: Element) {
+        val childElements = container.children.toList()
+        val lastGroupOrFile = childElements.indexOfLast { it.name == "group" || it.name == "file" }
+        val insertIndex = if (lastGroupOrFile >= 0) {
+            lastGroupOrFile + 1
+        } else {
+            childElements.takeWhile { it.name != "group" && it.name != "file" && it.name != "projectSettings" }.size
+        }
+        if (insertIndex in 0..childElements.size) {
+            container.addContent(insertIndex, element)
+        } else {
+            container.addContent(element)
+        }
+    }
+
     private fun createChildGroup(parent: Element, name: String): Element {
         val group = Element("group")
         group.addContent(Element("name").setText(name))
-        parent.addContent(group)
+        addContentToContainer(parent, group)
         return group
     }
 
