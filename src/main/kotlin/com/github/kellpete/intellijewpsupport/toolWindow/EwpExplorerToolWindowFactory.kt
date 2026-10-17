@@ -10,7 +10,9 @@ class EwpExplorerToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val panel = EwpExplorerPanel(project)
         val content = ContentFactory.getInstance().createContent(panel, null, false)
+        content.preferredFocusableComponent = panel.preferredFocusComponent()
         toolWindow.contentManager.addContent(content)
+        toolWindow.setTitleActions(panel.createTitleActions())
     }
 
     override fun shouldBeAvailable(project: Project) = true

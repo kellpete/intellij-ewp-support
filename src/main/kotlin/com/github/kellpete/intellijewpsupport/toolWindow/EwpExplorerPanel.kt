@@ -2,10 +2,12 @@ package com.github.kellpete.intellijewpsupport.toolWindow
 
 import com.github.kellpete.intellijewpsupport.MyBundle
 import com.github.kellpete.intellijewpsupport.ewp.addfiles.EwpProjectChangeListener
+import com.github.kellpete.intellijewpsupport.ewp.editor.EwpFileWriter
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.parser.EwpSortFixer
 import com.github.kellpete.intellijewpsupport.service.EwpIndexService
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.service
@@ -33,6 +35,7 @@ import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
+import javax.swing.tree.TreePath
 
 class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
@@ -99,6 +102,28 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         reloadEwpFiles()
     }
 
+    fun createTitleActions(): List<AnAction> =
+        EwpExplorerActions.createTitleActions(this, tree, this)
+
+    fun preferredFocusComponent() = tree
+
+    fun canCreateNewGroup(): Boolean = ewpComboBox.selectedItem is VirtualFile
+
+    fun createNewGroup() {
+        val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
+        val parentPath = resolveNewGroupParentPath()
+        val siblingNames = resolveSiblingGroupNames(parentPath)
+        val name = EwpNewGroupDialog.askGroupName(this, siblingNames) ?: return
+        val groupPath = parentPath + name
+
+        if (!EwpFileWriter.createGroup(selectedEwp, project, groupPath)) {
+            return
+        }
+
+        indexService.invalidate(selectedEwp)
+        reloadTree(selectGroupPath = groupPath)
+    }
+
     private fun createSortWarningPanel(): JPanel {
         val fixButton = JButton(MyBundle["ewpExplorer.fixSorting"]).apply {
             addActionListener { fixSortingForSelectedEwp() }
@@ -138,7 +163,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         reloadTree()
     }
 
-    private fun reloadTree() {
+    private fun reloadTree(selectGroupPath: List<String>? = null) {
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile
         if (selectedEwp == null) {
             showEmptyState()
@@ -150,12 +175,16 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         }
             .inSmartMode(project)
             .finishOnUiThread(ModalityState.defaultModalityState()) { ewpProject ->
-                applyTreeProject(selectedEwp, ewpProject)
+                applyTreeProject(selectedEwp, ewpProject, selectGroupPath)
             }
             .submit(AppExecutorUtil.getAppExecutorService())
     }
 
-    private fun applyTreeProject(selectedEwp: VirtualFile, ewpProject: EwpProject?) {
+    private fun applyTreeProject(
+        selectedEwp: VirtualFile,
+        ewpProject: EwpProject?,
+        selectGroupPath: List<String>? = null,
+    ) {
         if (ewpProject == null) {
             clearTree()
             hideSortWarning()
@@ -164,14 +193,60 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         }
 
         statusLabel.text = ""
-        setTreeProject(ewpProject)
+        setTreeProject(ewpProject, selectGroupPath)
         updateSortWarning(ewpProject)
     }
 
-    private fun setTreeProject(ewpProject: EwpProject) {
+    private fun setTreeProject(ewpProject: EwpProject, selectGroupPath: List<String>? = null) {
         tree.model = EwpTreeStructure.buildTreeModel(ewpProject)
         tree.setRootVisible(true)
         TreeUtil.expandAll(tree)
+        if (selectGroupPath != null) {
+            selectGroup(selectGroupPath)
+        }
+    }
+
+    private fun resolveNewGroupParentPath(): List<String> {
+        val selected = tree.selectionPath?.lastPathComponent
+        return when (val node = extractTreeNode(selected)) {
+            is EwpTreeNode.GroupNode -> node.groupPath
+            is EwpTreeNode.FileNode -> {
+                val parent = tree.selectionPath?.parentPath?.lastPathComponent
+                when (val parentNode = extractTreeNode(parent)) {
+                    is EwpTreeNode.GroupNode -> parentNode.groupPath
+                    else -> emptyList()
+                }
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun resolveSiblingGroupNames(parentPath: List<String>): Set<String> {
+        val root = tree.model.root ?: return emptySet()
+        val parentNode = findGroupNode(root, parentPath) ?: return emptySet()
+        return (0 until parentNode.childCount).mapNotNull { index ->
+            val child = parentNode.getChildAt(index) as? DefaultMutableTreeNode ?: return@mapNotNull null
+            (child.userObject as? EwpTreeNode.GroupNode)?.group?.name
+        }.toSet()
+    }
+
+    private fun selectGroup(groupPath: List<String>) {
+        val root = tree.model.root ?: return
+        val node = findGroupNode(root, groupPath) ?: return
+        val path = TreePath(node.path)
+        tree.selectionPath = path
+        TreeUtil.showRowCentered(tree, tree.getRowForPath(path), false)
+    }
+
+    private fun findGroupNode(root: Any, groupPath: List<String>): DefaultMutableTreeNode? {
+        var current = root as? DefaultMutableTreeNode ?: return null
+        for (name in groupPath) {
+            current = (0 until current.childCount)
+                .mapNotNull { current.getChildAt(it) as? DefaultMutableTreeNode }
+                .firstOrNull { (it.userObject as? EwpTreeNode.GroupNode)?.group?.name == name }
+                ?: return null
+        }
+        return current
     }
 
     private fun clearTree() {

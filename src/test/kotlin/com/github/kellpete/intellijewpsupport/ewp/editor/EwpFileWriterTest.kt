@@ -169,6 +169,32 @@ class EwpFileWriterTest {
     }
 
     @Test
+    fun createsEmptyGroupUnderExistingParent() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.createGroupInXml(input, listOf("src", "tools"))
+
+        assertTrue(output.contains("<name>tools</name>"))
+        assertTrue(output.indexOf("<name>src</name>") < output.indexOf("<name>tools</name>"))
+    }
+
+    @Test
+    fun createGroupIsNoOpWhenGroupExists() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.createGroupInXml(input, listOf("src"))
+
+        assertEquals(input, output)
+    }
+
+    @Test
+    fun createsNestedGroupWithMissingParents() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.createGroupInXml(input, listOf("libs", "vendor"))
+
+        assertTrue(output.contains("<name>libs</name>"))
+        assertTrue(output.contains("<name>vendor</name>"))
+    }
+
+    @Test
     fun removesCppAndHppTogether() {
         val input = loadSampleEwp()
         val withPair = EwpFileWriter.addFilesToXml(

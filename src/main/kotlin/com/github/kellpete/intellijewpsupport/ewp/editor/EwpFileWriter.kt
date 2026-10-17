@@ -68,6 +68,41 @@ object EwpFileWriter {
         }
     }
 
+    /**
+     * Creates an empty group at [groupPath] (parents are created if missing).
+     * Returns false if the group already exists or the write could not be applied.
+     */
+    fun createGroup(ewpFile: VirtualFile, project: Project, groupPath: List<String>): Boolean {
+        if (groupPath.isEmpty()) return false
+
+        val changed = booleanArrayOf(false)
+        WriteCommandAction.runWriteCommandAction(project) {
+            val document = FileDocumentManager.getInstance().getDocument(ewpFile) ?: return@runWriteCommandAction
+            val updatedText = createGroupInXml(document.text, groupPath)
+            if (updatedText != document.text) {
+                document.setText(updatedText)
+                FileDocumentManager.getInstance().saveDocument(document)
+                changed[0] = true
+            }
+        }
+        return changed[0]
+    }
+
+    fun createGroupInXml(xml: String, groupPath: List<String>): String {
+        if (groupPath.isEmpty()) return xml
+
+        val root = JDOMUtil.load(xml)
+        require(root.name == "project") { "Root element must be <project>, was <${root.name}>" }
+
+        val parentPath = groupPath.dropLast(1)
+        val name = groupPath.last()
+        val parent = findOrCreateGroup(root, parentPath)
+        if (findChildGroup(parent, name) != null) return xml
+
+        createChildGroup(parent, name)
+        return EwpDomSortFixer.sortAndFormat(root)
+    }
+
     fun addFilesToXml(xml: String, ewpDirectory: String, additions: List<FileAddition>): String {
         if (additions.isEmpty()) return xml
 
