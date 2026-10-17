@@ -240,7 +240,7 @@ class EwpFileWriterTest {
     }
 
     @Test
-    fun movesFileToNewGroup() {
+    fun movesFileCreatesTargetGroupIfAbsent() {
         val input = loadSampleEwp()
         val output = EwpFileWriter.moveNodesInXml(
             input,

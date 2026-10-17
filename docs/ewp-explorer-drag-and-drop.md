@@ -151,7 +151,7 @@ To ensure responsive and glitch-free drag-and-drop:
 
 - **`EwpFileWriterTest`**:
   - `movesFileToAnotherGroup`: Verifies file relocation and alphabetical re-sorting among siblings.
-  - `movesFileToNewGroup`: Verifies creation of target group if absent.
+  - `movesFileCreatesTargetGroupIfAbsent`: Verifies creation of target group if absent during a node move.
   - `movesFileRejectsSameGroup` & `movesFileRejectsDuplicateInTarget`: Verifies no-ops for invalid file moves.
   - `movesFileRejectsEmptyTargetGroup`: Verifies files cannot be moved to root.
   - `movesGroupToAnotherGroup`: Verifies moving nested group and preserving its contents.
