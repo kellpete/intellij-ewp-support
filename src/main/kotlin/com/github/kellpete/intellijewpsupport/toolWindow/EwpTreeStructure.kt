@@ -9,8 +9,11 @@ import javax.swing.tree.DefaultTreeModel
 sealed interface EwpTreeNode {
     val displayName: String
 
+    // TreeSpeedSearch matches DefaultMutableTreeNode.toString() (userObject.toString()),
+    // while the cell renderer highlights displayName — keep them identical.
     data class Root(val project: EwpProject) : EwpTreeNode {
         override val displayName: String = project.ewpFile.name
+        override fun toString(): String = displayName
     }
 
     data class GroupNode(
@@ -18,10 +21,12 @@ sealed interface EwpTreeNode {
         val groupPath: List<String>,
     ) : EwpTreeNode {
         override val displayName: String = group.name
+        override fun toString(): String = displayName
     }
 
     data class FileNode(val entry: EwpFileEntry) : EwpTreeNode {
         override val displayName: String = entry.displayName
+        override fun toString(): String = displayName
     }
 }
 
