@@ -2,6 +2,7 @@ package com.github.kellpete.intellijewpsupport.parser
 
 import com.github.kellpete.intellijewpsupport.model.EwpFileEntry
 import com.github.kellpete.intellijewpsupport.model.EwpGroup
+import com.github.kellpete.intellijewpsupport.model.EwpMissingFileValidator
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.model.EwpSortIssue
 import com.github.kellpete.intellijewpsupport.model.EwpSortValidator
@@ -28,11 +29,13 @@ class EwpParser {
         val groups = rootElement.getChildren("group").map { parseGroup(it, ewpFile, emptyList(), sortIssues) }
 
         sortIssues += EwpSortValidator.validateGroups(groups)
+        val missingFiles = EwpMissingFileValidator.findMissingFiles(groups)
 
         return EwpProject(
             ewpFile = ewpFile,
             groups = groups,
             sortIssues = sortIssues,
+            missingFiles = missingFiles,
         )
     }
 

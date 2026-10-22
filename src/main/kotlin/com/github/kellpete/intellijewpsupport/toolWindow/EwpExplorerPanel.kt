@@ -54,6 +54,9 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private val statusLabel = JBLabel("", JBLabel.LEFT)
     private val sortWarningLabel = JBLabel("", AllIcons.General.Warning, JBLabel.LEFT)
     private val sortWarningPanel = createSortWarningPanel()
+    private val missingFilesWarningLabel = JBLabel("", AllIcons.General.Warning, JBLabel.LEFT)
+    private val missingFilesWarningPanel = createMissingFilesWarningPanel()
+    private val warningsPanel = createWarningsPanel()
     private val treeContainer = BorderLayoutPanel()
     @Suppress("unused")
     private val removeFilesAction: RemoveFilesAction
@@ -131,7 +134,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             }
         })
 
-        treeContainer.add(sortWarningPanel, BorderLayout.NORTH)
+        treeContainer.add(warningsPanel, BorderLayout.NORTH)
         treeContainer.add(JBScrollPane(tree), BorderLayout.CENTER)
 
         add(toolbar, BorderLayout.NORTH)
@@ -289,6 +292,26 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         }
     }
 
+    private fun createMissingFilesWarningPanel(): JPanel {
+        val fixButton = JButton(MyBundle["ewpExplorer.removeMissingFiles"]).apply {
+            addActionListener { removeMissingFilesForSelectedEwp() }
+        }
+
+        return JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.emptyBottom(4)
+            isVisible = false
+            add(missingFilesWarningLabel, BorderLayout.CENTER)
+            add(fixButton, BorderLayout.EAST)
+        }
+    }
+
+    private fun createWarningsPanel(): JPanel =
+        BorderLayoutPanel().apply {
+            isVisible = false
+            addToTop(sortWarningPanel)
+            addToBottom(missingFilesWarningPanel)
+        }
+
     fun reloadEwpFiles() {
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater { reloadEwpFiles() }
@@ -349,14 +372,14 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     ) {
         if (ewpProject == null) {
             clearTree()
-            hideSortWarning()
+            hideWarnings()
             statusLabel.text = MyBundle["ewpExplorer.parseError", selectedEwp.name]
             return
         }
 
         statusLabel.text = ""
         setTreeProject(ewpProject, selectGroupPath)
-        updateSortWarning(ewpProject)
+        updateWarnings(ewpProject)
     }
 
     private fun setTreeProject(ewpProject: EwpProject, selectGroupPath: List<String>? = null) {
@@ -476,25 +499,36 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
     private fun showEmptyState() {
         clearTree()
-        hideSortWarning()
+        hideWarnings()
         statusLabel.text = MyBundle["ewpExplorer.emptyState"]
     }
 
-    private fun updateSortWarning(ewpProject: EwpProject) {
-        val issueCount = ewpProject.sortIssueCount
-        if (issueCount <= 0) {
-            hideSortWarning()
-            return
+    private fun updateWarnings(ewpProject: EwpProject) {
+        val sortIssueCount = ewpProject.sortIssueCount
+        if (sortIssueCount > 0) {
+            sortWarningLabel.text = MyBundle["ewpExplorer.sortWarning", sortIssueCount]
+            sortWarningPanel.isVisible = true
+        } else {
+            sortWarningPanel.isVisible = false
         }
 
-        sortWarningLabel.text = MyBundle["ewpExplorer.sortWarning", issueCount]
-        sortWarningPanel.isVisible = true
+        val missingFileCount = ewpProject.missingFileCount
+        if (missingFileCount > 0) {
+            missingFilesWarningLabel.text = MyBundle["ewpExplorer.missingFilesWarning", missingFileCount]
+            missingFilesWarningPanel.isVisible = true
+        } else {
+            missingFilesWarningPanel.isVisible = false
+        }
+
+        warningsPanel.isVisible = sortWarningPanel.isVisible || missingFilesWarningPanel.isVisible
         treeContainer.revalidate()
         treeContainer.repaint()
     }
 
-    private fun hideSortWarning() {
+    private fun hideWarnings() {
         sortWarningPanel.isVisible = false
+        missingFilesWarningPanel.isVisible = false
+        warningsPanel.isVisible = false
         treeContainer.revalidate()
         treeContainer.repaint()
     }
@@ -502,6 +536,17 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private fun fixSortingForSelectedEwp() {
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
         EwpSortFixer.fixSorting(selectedEwp, project)
+        indexService.invalidate(selectedEwp)
+        reloadTree()
+    }
+
+    private fun removeMissingFilesForSelectedEwp() {
+        val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
+        val ewpProject = currentEwpProject() ?: return
+        val rawPaths = ewpProject.missingFiles.map { it.rawPath }
+        if (rawPaths.isEmpty()) return
+
+        EwpFileWriter.removeFiles(selectedEwp, project, absolutePaths = emptyList(), rawPaths = rawPaths)
         indexService.invalidate(selectedEwp)
         reloadTree()
     }
