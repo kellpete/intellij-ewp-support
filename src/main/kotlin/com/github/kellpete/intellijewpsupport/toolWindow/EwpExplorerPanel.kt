@@ -32,11 +32,13 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import com.intellij.util.ui.tree.TreeUtil
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListCellRenderer
 import javax.swing.DropMode
+import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JList
@@ -76,25 +78,24 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             }
         }
 
+        val toolbarRowHeight = ewpComboBox.preferredSize.height
+        ewpComboBox.maximumSize = Dimension(Int.MAX_VALUE, toolbarRowHeight)
         val refreshButton = JButton(AllIcons.Actions.Refresh).apply {
             toolTipText = MyBundle["ewpExplorer.refresh"]
             margin = JBUI.emptyInsets()
             isFocusable = false
+            preferredSize = JBUI.size(toolbarRowHeight, toolbarRowHeight)
             addActionListener {
                 indexService.invalidateAll()
                 reloadEwpFiles()
             }
         }
-        val refreshSide = ewpComboBox.preferredSize.height.coerceAtLeast(refreshButton.preferredSize.height)
-        val refreshSquare = JBUI.size(refreshSide, refreshSide)
-        refreshButton.preferredSize = refreshSquare
-        refreshButton.minimumSize = refreshSquare
-        refreshButton.maximumSize = refreshSquare
 
-        val toolbar = JPanel(BorderLayout()).apply {
+        val toolbar = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
             border = JBUI.Borders.emptyBottom(4)
-            add(ewpComboBox, BorderLayout.CENTER)
-            add(refreshButton, BorderLayout.EAST)
+            add(ewpComboBox)
+            add(refreshButton)
         }
 
         tree.setRootVisible(true)
