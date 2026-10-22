@@ -131,7 +131,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         project.messageBus.connect().subscribe(EwpProjectChangeListener.TOPIC, object : EwpProjectChangeListener {
             override fun onEwpProjectsChanged() {
-                SwingUtilities.invokeLater { reloadTree() }
+                SwingUtilities.invokeLater { reloadEwpFiles() }
             }
         })
 

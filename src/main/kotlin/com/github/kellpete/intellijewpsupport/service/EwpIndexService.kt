@@ -1,5 +1,6 @@
 package com.github.kellpete.intellijewpsupport.service
 
+import com.github.kellpete.intellijewpsupport.ewp.addfiles.EwpProjectChangeListener
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.parser.EwpParser
 import com.intellij.openapi.Disposable
@@ -22,11 +23,15 @@ class EwpIndexService(private val project: Project) : Disposable {
     init {
         project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
             override fun after(events: List<VFileEvent>) {
+                var ewpChanged = false
                 for (event in events) {
                     val file = event.file ?: continue
-                    if (file.extension?.equals("ewp", ignoreCase = true) == true) {
-                        invalidate(file)
-                    }
+                    if (file.extension?.equals("ewp", ignoreCase = true) != true) continue
+                    invalidate(file)
+                    ewpChanged = true
+                }
+                if (ewpChanged) {
+                    project.messageBus.syncPublisher(EwpProjectChangeListener.TOPIC).onEwpProjectsChanged()
                 }
             }
         })

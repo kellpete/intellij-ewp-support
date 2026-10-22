@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 
+- Fix: EWP Explorer refreshes when `.ewp` files change on disk (e.g. edited in CLion)
 - EWP Explorer: warn about files listed in the EWP that are missing on disk, with an action to remove them
 - EWP Explorer: right-click menu to add/remove groups and files
 - Added icons for ewp files and EWP explorer
