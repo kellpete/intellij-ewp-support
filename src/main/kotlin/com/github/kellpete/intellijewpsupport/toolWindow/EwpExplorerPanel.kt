@@ -73,16 +73,25 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             }
         }
 
+        val refreshButton = JButton(AllIcons.Actions.Refresh).apply {
+            toolTipText = MyBundle["ewpExplorer.refresh"]
+            margin = JBUI.emptyInsets()
+            isFocusable = false
+            addActionListener {
+                indexService.invalidateAll()
+                reloadEwpFiles()
+            }
+        }
+        val refreshSide = ewpComboBox.preferredSize.height.coerceAtLeast(refreshButton.preferredSize.height)
+        val refreshSquare = JBUI.size(refreshSide, refreshSide)
+        refreshButton.preferredSize = refreshSquare
+        refreshButton.minimumSize = refreshSquare
+        refreshButton.maximumSize = refreshSquare
+
         val toolbar = JPanel(BorderLayout()).apply {
             border = JBUI.Borders.emptyBottom(4)
             add(ewpComboBox, BorderLayout.CENTER)
-            add(JButton(AllIcons.Actions.Refresh).apply {
-                toolTipText = MyBundle["ewpExplorer.refresh"]
-                addActionListener {
-                    indexService.invalidateAll()
-                    reloadEwpFiles()
-                }
-            }, BorderLayout.EAST)
+            add(refreshButton, BorderLayout.EAST)
         }
 
         tree.setRootVisible(true)
