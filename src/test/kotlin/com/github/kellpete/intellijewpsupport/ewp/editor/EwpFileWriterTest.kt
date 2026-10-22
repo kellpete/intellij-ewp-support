@@ -85,6 +85,20 @@ class EwpFileWriterTest {
     }
 
     @Test
+    fun removesGroupAndNestedFiles() {
+        val input = loadSampleEwp()
+        val output = EwpFileWriter.removeFromEwpToXml(
+            input,
+            "/project/firmware",
+            groupPaths = listOf(listOf("src", "services", "parameter")),
+        )
+
+        assertFalse(output.contains("RedundantParameters"))
+        assertTrue(output.contains("main.cpp"))
+        assertFalse(output.contains("<name>parameter</name>"))
+    }
+
+    @Test
     fun removesExistingFile() {
         val input = loadSampleEwp()
         val output = EwpFileWriter.removeFilesToXml(

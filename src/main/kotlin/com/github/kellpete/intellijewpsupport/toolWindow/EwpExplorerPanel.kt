@@ -142,8 +142,9 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     fun canAddFilesToSelectedGroup(): Boolean =
         ewpComboBox.selectedItem is VirtualFile && resolveTargetGroupPath() != null
 
-    fun canRemoveSelectedFiles(): Boolean =
-        ewpComboBox.selectedItem is VirtualFile && selectedFileNodes().isNotEmpty()
+    fun canRemoveSelectedFromEwp(): Boolean =
+        ewpComboBox.selectedItem is VirtualFile &&
+            (selectedFileNodes().isNotEmpty() || selectedGroupNodes().isNotEmpty())
 
     fun createNewGroup() {
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
@@ -197,16 +198,16 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         }
     }
 
-    fun removeSelectedFilesFromEwp() {
+    fun removeSelectedFromEwp() {
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
-        val fileNodes = selectedFileNodes()
-        if (fileNodes.isEmpty()) return
-
-        val message = if (fileNodes.size == 1) {
-            MyBundle["ewpExplorer.removeFiles.confirmSingle", fileNodes.first().displayName]
-        } else {
-            MyBundle["ewpExplorer.removeFiles.confirmMultiple", fileNodes.size]
+        val groupNodes = selectedGroupNodes()
+        val groupPaths = EwpFileWriter.filterRedundantGroupPaths(groupNodes.map { it.groupPath })
+        val fileNodes = selectedFileNodes().filter { node ->
+            groupPaths.none { EwpFileWriter.isDescendantOrSelf(it, node.groupPath) }
         }
+        if (fileNodes.isEmpty() && groupPaths.isEmpty()) return
+
+        val message = buildRemoveFromEwpConfirmMessage(fileNodes, groupPaths)
         val title = MyBundle["ewpExplorer.removeFiles.title"]
         if (Messages.showYesNoDialog(this, message, title, Messages.getQuestionIcon()) != Messages.YES) {
             return
@@ -223,8 +224,12 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             }
         }
 
-        val selectGroupPath = fileNodes.first().groupPath.takeIf { it.isNotEmpty() }
-        if (!EwpFileWriter.removeFiles(selectedEwp, project, absolutePaths, rawPaths)) {
+        val selectGroupPath = when {
+            groupPaths.isNotEmpty() -> groupPaths.first().dropLast(1).takeIf { it.isNotEmpty() }
+            fileNodes.isNotEmpty() -> fileNodes.first().groupPath.takeIf { it.isNotEmpty() }
+            else -> null
+        }
+        if (!EwpFileWriter.removeFromEwp(selectedEwp, project, absolutePaths, rawPaths, groupPaths)) {
             return
         }
 
@@ -232,9 +237,34 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         reloadTree(selectGroupPath = selectGroupPath)
     }
 
+    private fun buildRemoveFromEwpConfirmMessage(
+        fileNodes: List<EwpTreeNode.FileNode>,
+        groupPaths: List<List<String>>,
+    ): String {
+        val fileCount = fileNodes.size
+        val groupCount = groupPaths.size
+        return when {
+            fileCount == 0 && groupCount == 1 ->
+                MyBundle["ewpExplorer.removeFiles.confirmSingleGroup", groupPaths.first().last()]
+            fileCount == 0 && groupCount > 1 ->
+                MyBundle["ewpExplorer.removeFiles.confirmMultipleGroups", groupCount]
+            fileCount == 1 && groupCount == 0 ->
+                MyBundle["ewpExplorer.removeFiles.confirmSingle", fileNodes.first().displayName]
+            fileCount > 1 && groupCount == 0 ->
+                MyBundle["ewpExplorer.removeFiles.confirmMultiple", fileCount]
+            else ->
+                MyBundle["ewpExplorer.removeFiles.confirmMixed", fileCount, groupCount]
+        }
+    }
+
     private fun selectedFileNodes(): List<EwpTreeNode.FileNode> =
         tree.selectionPaths
             ?.mapNotNull { path -> extractTreeNode(path.lastPathComponent) as? EwpTreeNode.FileNode }
+            ?: emptyList()
+
+    private fun selectedGroupNodes(): List<EwpTreeNode.GroupNode> =
+        tree.selectionPaths
+            ?.mapNotNull { path -> extractTreeNode(path.lastPathComponent) as? EwpTreeNode.GroupNode }
             ?: emptyList()
 
     private fun createSortWarningPanel(): JPanel {

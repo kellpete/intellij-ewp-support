@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 
+- EWP Explorer: right-click menu to add/remove groups and files
 - Added icons for ewp files and EWP explorer
 
 ## [0.0.2] - 2026-09-17

@@ -27,7 +27,6 @@ internal object EwpExplorerActions {
         val expander = DefaultTreeExpander { tree }
         val common = CommonActionsManager.getInstance()
         return listOf(
-            NewGroupAction(panel),
             ExpandSelectedAction(tree, contextComponent),
             common.createCollapseAllHeaderAction(expander, contextComponent),
         )
@@ -126,11 +125,11 @@ internal class RemoveFilesAction(
     }
 
     override fun actionPerformed(e: AnActionEvent) {
-        panel.removeSelectedFilesFromEwp()
+        panel.removeSelectedFromEwp()
     }
 
     override fun update(e: AnActionEvent) {
-        e.presentation.isEnabled = panel.canRemoveSelectedFiles()
+        e.presentation.isEnabled = panel.canRemoveSelectedFromEwp()
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT

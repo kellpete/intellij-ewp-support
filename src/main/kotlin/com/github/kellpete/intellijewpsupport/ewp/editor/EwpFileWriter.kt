@@ -54,14 +54,23 @@ object EwpFileWriter {
         project: Project,
         absolutePaths: Collection<String>,
         rawPaths: Collection<String> = emptyList(),
+    ): Boolean = removeFromEwp(ewpFile, project, absolutePaths, rawPaths)
+
+    @JvmOverloads
+    fun removeFromEwp(
+        ewpFile: VirtualFile,
+        project: Project,
+        absolutePaths: Collection<String> = emptyList(),
+        rawPaths: Collection<String> = emptyList(),
+        groupPaths: Collection<List<String>> = emptyList(),
     ): Boolean {
-        if (absolutePaths.isEmpty() && rawPaths.isEmpty()) return false
+        if (absolutePaths.isEmpty() && rawPaths.isEmpty() && groupPaths.isEmpty()) return false
 
         val changed = booleanArrayOf(false)
         WriteCommandAction.runWriteCommandAction(project) {
             val document = FileDocumentManager.getInstance().getDocument(ewpFile) ?: return@runWriteCommandAction
             val ewpDirectory = ewpFile.parent.path
-            val updatedText = removeFilesToXml(document.text, ewpDirectory, absolutePaths, rawPaths)
+            val updatedText = removeFromEwpToXml(document.text, ewpDirectory, absolutePaths, rawPaths, groupPaths)
             if (updatedText != document.text) {
                 document.setText(updatedText)
                 FileDocumentManager.getInstance().saveDocument(document)
@@ -247,20 +256,59 @@ object EwpFileWriter {
         ewpDirectory: String,
         absolutePaths: Collection<String>,
         rawPaths: Collection<String> = emptyList(),
+    ): String = removeFromEwpToXml(xml, ewpDirectory, absolutePaths, rawPaths, emptyList())
+
+    @JvmOverloads
+    fun removeFromEwpToXml(
+        xml: String,
+        ewpDirectory: String,
+        absolutePaths: Collection<String> = emptyList(),
+        rawPaths: Collection<String> = emptyList(),
+        groupPaths: Collection<List<String>> = emptyList(),
     ): String {
-        if (absolutePaths.isEmpty() && rawPaths.isEmpty()) return xml
+        if (absolutePaths.isEmpty() && rawPaths.isEmpty() && groupPaths.isEmpty()) return xml
 
         val root = JDOMUtil.load(xml)
         require(root.name == "project") { "Root element must be <project>, was <${root.name}>" }
 
+        var changed = false
+        for (groupPath in filterRedundantGroupPaths(groupPaths)) {
+            if (removeGroupAtPath(root, groupPath)) {
+                changed = true
+            }
+        }
+
         val normalizedTargets = absolutePaths.map { normalizePath(it) }.toSet()
         val normalizedRawTargets = rawPaths.map { normalizeRawPath(it) }.toSet()
-        if (!removeMatchingFiles(root, ewpDirectory, normalizedTargets, normalizedRawTargets)) {
-            return xml
+        if (normalizedTargets.isNotEmpty() || normalizedRawTargets.isNotEmpty()) {
+            if (removeMatchingFiles(root, ewpDirectory, normalizedTargets, normalizedRawTargets)) {
+                changed = true
+            }
         }
+
+        if (!changed) return xml
 
         pruneEmptyGroups(root)
         return EwpDomSortFixer.sortAndFormat(root)
+    }
+
+    fun filterRedundantGroupPaths(groupPaths: Collection<List<String>>): List<List<String>> {
+        val paths = groupPaths.filter { it.isNotEmpty() }
+        return paths.filter { candidate ->
+            paths.none { other ->
+                other != candidate && other.size < candidate.size && isDescendantOrSelf(other, candidate)
+            }
+        }
+    }
+
+    private fun removeGroupAtPath(root: Element, groupPath: List<String>): Boolean {
+        if (groupPath.isEmpty()) return false
+        val parentPath = groupPath.dropLast(1)
+        val groupName = groupPath.last()
+        val parent = if (parentPath.isEmpty()) root else findGroup(root, parentPath) ?: return false
+        val groupElement = findChildGroup(parent, groupName) ?: return false
+        parent.removeContent(groupElement)
+        return true
     }
 
     fun moveFilesToXml(xml: String, ewpDirectory: String, moves: List<FileMove>): String {
