@@ -18,6 +18,7 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -40,7 +41,6 @@ import javax.swing.DefaultListCellRenderer
 import javax.swing.DropMode
 import javax.swing.BoxLayout
 import javax.swing.JButton
-import javax.swing.JComboBox
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
@@ -51,7 +51,7 @@ import javax.swing.tree.TreePath
 class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
     private val indexService = project.service<EwpIndexService>()
-    private val ewpComboBox = JComboBox<VirtualFile>()
+    private val ewpComboBox = ComboBox<VirtualFile>()
     private val tree = SimpleTree()
     private val statusLabel = JBLabel("", JBLabel.LEFT)
     private val sortWarningLabel = JBLabel("", AllIcons.General.Warning, JBLabel.LEFT)
@@ -60,6 +60,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private val missingFilesWarningPanel = createMissingFilesWarningPanel()
     private val warningsPanel = createWarningsPanel()
     private val treeContainer = BorderLayoutPanel()
+
     @Suppress("unused")
     private val removeFilesAction: RemoveFilesAction
 
@@ -146,7 +147,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     }
 
     fun createTitleActions(): List<AnAction> =
-        EwpExplorerActions.createTitleActions(this, tree, this)
+        EwpExplorerActions.createTitleActions(tree, this)
 
     fun preferredFocusComponent() = tree
 
@@ -157,7 +158,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
     fun canRemoveSelectedFromEwp(): Boolean =
         ewpComboBox.selectedItem is VirtualFile &&
-            (selectedFileNodes().isNotEmpty() || selectedGroupNodes().isNotEmpty())
+                (selectedFileNodes().isNotEmpty() || selectedGroupNodes().isNotEmpty())
 
     fun createNewGroup() {
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
@@ -259,12 +260,16 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         return when {
             fileCount == 0 && groupCount == 1 ->
                 MyBundle["ewpExplorer.removeFiles.confirmSingleGroup", groupPaths.first().last()]
+
             fileCount == 0 && groupCount > 1 ->
                 MyBundle["ewpExplorer.removeFiles.confirmMultipleGroups", groupCount]
+
             fileCount == 1 && groupCount == 0 ->
                 MyBundle["ewpExplorer.removeFiles.confirmSingle", fileNodes.first().displayName]
+
             fileCount > 1 && groupCount == 0 ->
                 MyBundle["ewpExplorer.removeFiles.confirmMultiple", fileCount]
+
             else ->
                 MyBundle["ewpExplorer.removeFiles.confirmMixed", fileCount, groupCount]
         }
@@ -339,7 +344,8 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             return
         }
 
-        val selection = previousSelection?.takeIf { previous -> ewpFiles.any { it.path == previous.path } } ?: ewpFiles.first()
+        val selection =
+            previousSelection?.takeIf { previous -> ewpFiles.any { it.path == previous.path } } ?: ewpFiles.first()
         ewpComboBox.selectedItem = selection
         reloadTree()
     }
@@ -431,7 +437,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         val fileDirs = collectResolvedFileDirectories(ewpProject.groups)
         val matching = contentRoots.filter { root ->
             fileDirs.any { dir -> FileUtil.startsWith(dir, root) } ||
-                FileUtil.startsWith(FileUtil.toSystemIndependentName(ewpProject.ewpFile.path), root)
+                    FileUtil.startsWith(FileUtil.toSystemIndependentName(ewpProject.ewpFile.path), root)
         }
         return matching.minByOrNull { it.length }
             ?: contentRoots.minByOrNull { it.length }
@@ -586,8 +592,8 @@ class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
 
         val dropLocation = tree.dropLocation
         val isDropTarget = dropLocation != null &&
-            dropLocation.childIndex == -1 &&
-            tree.getRowForPath(dropLocation.path) == row
+                dropLocation.childIndex == -1 &&
+                tree.getRowForPath(dropLocation.path) == row
 
         if (isDropTarget) {
             setPaintFocusBorder(true)
@@ -600,10 +606,12 @@ class EwpTreeCellRenderer : ColoredTreeCellRenderer() {
                 icon = AllIcons.Nodes.Module
                 toolTipText = node.project.ewpFile.path
             }
+
             is EwpTreeNode.GroupNode -> {
                 icon = AllIcons.Nodes.Folder
                 toolTipText = node.displayName
             }
+
             is EwpTreeNode.FileNode -> {
                 val resolvedPath = node.entry.resolvedPath
                 icon = if (resolvedPath != null) {

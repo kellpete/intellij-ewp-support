@@ -23,7 +23,7 @@ internal object EwpExplorerActions {
 
     private const val POPUP_PLACE = "EwpExplorerPopup"
 
-    fun createTitleActions(panel: EwpExplorerPanel, tree: JTree, contextComponent: JComponent): List<AnAction> {
+    fun createTitleActions(tree: JTree, contextComponent: JComponent): List<AnAction> {
         val expander = DefaultTreeExpander { tree }
         val common = CommonActionsManager.getInstance()
         return listOf(
