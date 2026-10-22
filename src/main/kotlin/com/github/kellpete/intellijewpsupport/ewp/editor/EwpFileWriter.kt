@@ -48,14 +48,20 @@ object EwpFileWriter {
         }
     }
 
-    fun removeFiles(ewpFile: VirtualFile, project: Project, absolutePaths: Collection<String>): Boolean {
-        if (absolutePaths.isEmpty()) return false
+    @JvmOverloads
+    fun removeFiles(
+        ewpFile: VirtualFile,
+        project: Project,
+        absolutePaths: Collection<String>,
+        rawPaths: Collection<String> = emptyList(),
+    ): Boolean {
+        if (absolutePaths.isEmpty() && rawPaths.isEmpty()) return false
 
         val changed = booleanArrayOf(false)
         WriteCommandAction.runWriteCommandAction(project) {
             val document = FileDocumentManager.getInstance().getDocument(ewpFile) ?: return@runWriteCommandAction
             val ewpDirectory = ewpFile.parent.path
-            val updatedText = removeFilesToXml(document.text, ewpDirectory, absolutePaths)
+            val updatedText = removeFilesToXml(document.text, ewpDirectory, absolutePaths, rawPaths)
             if (updatedText != document.text) {
                 document.setText(updatedText)
                 FileDocumentManager.getInstance().saveDocument(document)
@@ -235,14 +241,21 @@ object EwpFileWriter {
         return EwpDomSortFixer.sortAndFormat(root)
     }
 
-    fun removeFilesToXml(xml: String, ewpDirectory: String, absolutePaths: Collection<String>): String {
-        if (absolutePaths.isEmpty()) return xml
+    @JvmOverloads
+    fun removeFilesToXml(
+        xml: String,
+        ewpDirectory: String,
+        absolutePaths: Collection<String>,
+        rawPaths: Collection<String> = emptyList(),
+    ): String {
+        if (absolutePaths.isEmpty() && rawPaths.isEmpty()) return xml
 
         val root = JDOMUtil.load(xml)
         require(root.name == "project") { "Root element must be <project>, was <${root.name}>" }
 
         val normalizedTargets = absolutePaths.map { normalizePath(it) }.toSet()
-        if (!removeMatchingFiles(root, ewpDirectory, normalizedTargets)) {
+        val normalizedRawTargets = rawPaths.map { normalizeRawPath(it) }.toSet()
+        if (!removeMatchingFiles(root, ewpDirectory, normalizedTargets, normalizedRawTargets)) {
             return xml
         }
 
@@ -261,7 +274,7 @@ object EwpFileWriter {
 
         for (move in moves) {
             val oldPath = normalizePath(move.oldAbsolutePath)
-            if (!removeMatchingFiles(root, ewpDirectory, setOf(oldPath))) {
+            if (!removeMatchingFiles(root, ewpDirectory, setOf(oldPath), emptySet())) {
                 continue
             }
             changed = true
@@ -286,6 +299,7 @@ object EwpFileWriter {
         container: Element,
         ewpDirectory: String,
         normalizedTargets: Set<String>,
+        normalizedRawTargets: Set<String> = emptySet(),
     ): Boolean {
         var removed = false
         val children = container.children.toList()
@@ -293,14 +307,17 @@ object EwpFileWriter {
             when (child.name) {
                 "file" -> {
                     val rawPath = child.getChildTextTrim("name") ?: continue
+                    val normalizedRaw = normalizeRawPath(rawPath)
                     val resolved = EwpPathResolver.resolve(ewpDirectory, rawPath)?.let { normalizePath(it) }
-                    if (resolved != null && normalizedTargets.any { FileUtil.pathsEqual(it, resolved) }) {
+                    val matchesAbsolute = resolved != null && normalizedTargets.any { FileUtil.pathsEqual(it, resolved) }
+                    val matchesRaw = normalizedRawTargets.any { FileUtil.pathsEqual(it, normalizedRaw) }
+                    if (matchesAbsolute || matchesRaw) {
                         container.removeContent(child)
                         removed = true
                     }
                 }
                 "group" -> {
-                    if (removeMatchingFiles(child, ewpDirectory, normalizedTargets)) {
+                    if (removeMatchingFiles(child, ewpDirectory, normalizedTargets, normalizedRawTargets)) {
                         removed = true
                     }
                 }

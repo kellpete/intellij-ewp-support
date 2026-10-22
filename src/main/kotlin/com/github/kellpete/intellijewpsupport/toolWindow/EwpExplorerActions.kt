@@ -8,15 +8,20 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonShortcuts
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.InputValidatorEx
 import com.intellij.openapi.ui.Messages
+import com.intellij.ui.PopupHandler
 import javax.swing.JComponent
 import javax.swing.JTree
 import javax.swing.tree.TreeNode
 import javax.swing.tree.TreePath
 
 internal object EwpExplorerActions {
+
+    private const val POPUP_PLACE = "EwpExplorerPopup"
 
     fun createTitleActions(panel: EwpExplorerPanel, tree: JTree, contextComponent: JComponent): List<AnAction> {
         val expander = DefaultTreeExpander { tree }
@@ -26,6 +31,17 @@ internal object EwpExplorerActions {
             ExpandSelectedAction(tree, contextComponent),
             common.createCollapseAllHeaderAction(expander, contextComponent),
         )
+    }
+
+    fun installPopupMenu(panel: EwpExplorerPanel, tree: JTree): RemoveFilesAction {
+        val removeFilesAction = RemoveFilesAction(panel, tree)
+        val group = DefaultActionGroup().apply {
+            add(NewGroupAction(panel))
+            add(AddFilesAction(panel))
+            add(removeFilesAction)
+        }
+        PopupHandler.installPopupMenu(tree, group, POPUP_PLACE)
+        return removeFilesAction
     }
 }
 
@@ -76,6 +92,45 @@ private class NewGroupAction(
 
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabled = panel.canCreateNewGroup()
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+}
+
+private class AddFilesAction(
+    private val panel: EwpExplorerPanel,
+) : DumbAwareAction(
+    MyBundle.messagePointer("ewpExplorer.addFiles"),
+    AllIcons.Actions.AddFile,
+) {
+    override fun actionPerformed(e: AnActionEvent) {
+        panel.addFilesToSelectedGroup()
+    }
+
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabled = panel.canAddFilesToSelectedGroup()
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+}
+
+internal class RemoveFilesAction(
+    private val panel: EwpExplorerPanel,
+    tree: JTree,
+) : DumbAwareAction(
+    MyBundle.messagePointer("ewpExplorer.removeFiles"),
+    AllIcons.Actions.GC,
+) {
+    init {
+        registerCustomShortcutSet(CommonShortcuts.getDelete(), tree)
+    }
+
+    override fun actionPerformed(e: AnActionEvent) {
+        panel.removeSelectedFilesFromEwp()
+    }
+
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabled = panel.canRemoveSelectedFiles()
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT

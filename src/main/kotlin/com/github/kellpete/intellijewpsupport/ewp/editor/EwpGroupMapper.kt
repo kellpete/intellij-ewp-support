@@ -26,10 +26,65 @@ class EwpGroupMapper(
             ?: filesystemFallback(normalizedTarget, normalizedRoot)
     }
 
+    /**
+     * Reverse of [mapDirectory]: suggest a filesystem directory for a given EWP group.
+     * Used e.g. as the initial folder of the "Add Files" chooser.
+     */
+    fun mapGroupToDirectory(groupPath: List<String>): String {
+        val normalizedRoot = normalizePath(projectRoot)
+
+        return obviousDirectory(groupPath)
+            ?: parentWalkDirectory(groupPath)
+            ?: shortestPathDirectory(groupPath, normalizedRoot)
+            ?: appendSubdirectories(normalizedRoot, groupPath)
+    }
+
     private fun obviousMapping(directory: String): List<String>? {
         val matches = fileLocations.filter { it.directory == directory }
         if (matches.isEmpty()) return null
         return matches.first().groupPath
+    }
+
+    private fun obviousDirectory(groupPath: List<String>): String? {
+        val matches = fileLocations.filter { it.groupPath == groupPath }
+        if (matches.isEmpty()) return null
+        return matches
+            .groupingBy { it.directory }
+            .eachCount()
+            .maxWithOrNull(compareBy({ it.value }, { -it.key.length }))
+            ?.key
+    }
+
+    private fun parentWalkDirectory(groupPath: List<String>): String? {
+        for (prefixLen in groupPath.size - 1 downTo 0) {
+            val parentGroup = groupPath.take(prefixLen)
+            val parentDir = obviousDirectory(parentGroup) ?: continue
+            return appendSubdirectories(parentDir, groupPath.drop(prefixLen))
+        }
+        return null
+    }
+
+    private fun shortestPathDirectory(groupPath: List<String>, projectRoot: String): String? {
+        val reference = fileLocations.minByOrNull { it.directory.length } ?: return null
+        val sharedLength = commonListPrefixLength(reference.groupPath, groupPath)
+        if (sharedLength == 0) return null
+
+        val referenceDirComponents = pathComponents(reference.directory, projectRoot)
+        val baseDir = appendSubdirectories(projectRoot, referenceDirComponents.take(sharedLength))
+        return appendSubdirectories(baseDir, groupPath.drop(sharedLength))
+    }
+
+    private fun appendSubdirectories(base: String, subdirs: List<String>): String {
+        if (subdirs.isEmpty()) return normalizePath(base)
+        return normalizePath(base.trimEnd('/') + "/" + subdirs.joinToString("/"))
+    }
+
+    private fun commonListPrefixLength(first: List<String>, second: List<String>): Int {
+        var length = 0
+        while (length < first.size && length < second.size && first[length] == second[length]) {
+            length++
+        }
+        return length
     }
 
     private fun parentWalkMapping(directory: String, projectRoot: String): List<String>? {

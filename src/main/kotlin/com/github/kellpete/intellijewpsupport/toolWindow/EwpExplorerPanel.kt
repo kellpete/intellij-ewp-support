@@ -3,6 +3,8 @@ package com.github.kellpete.intellijewpsupport.toolWindow
 import com.github.kellpete.intellijewpsupport.MyBundle
 import com.github.kellpete.intellijewpsupport.ewp.addfiles.EwpProjectChangeListener
 import com.github.kellpete.intellijewpsupport.ewp.editor.EwpFileWriter
+import com.github.kellpete.intellijewpsupport.ewp.editor.EwpGroupMapper
+import com.github.kellpete.intellijewpsupport.model.EwpGroup
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.parser.EwpSortFixer
 import com.github.kellpete.intellijewpsupport.service.EwpIndexService
@@ -11,9 +13,13 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.service
-import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.openapi.fileChooser.FileChooser
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.ColoredTreeCellRenderer
@@ -21,6 +27,7 @@ import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.treeStructure.SimpleTree
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import com.intellij.util.ui.tree.TreeUtil
@@ -48,6 +55,8 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private val sortWarningLabel = JBLabel("", AllIcons.General.Warning, JBLabel.LEFT)
     private val sortWarningPanel = createSortWarningPanel()
     private val treeContainer = BorderLayoutPanel()
+    @Suppress("unused")
+    private val removeFilesAction: RemoveFilesAction
 
     init {
         border = JBUI.Borders.empty(4)
@@ -103,6 +112,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
                 }
             }
         })
+        removeFilesAction = EwpExplorerActions.installPopupMenu(this, tree)
 
         ewpComboBox.addActionListener { reloadTree() }
 
@@ -129,6 +139,12 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
     fun canCreateNewGroup(): Boolean = ewpComboBox.selectedItem is VirtualFile
 
+    fun canAddFilesToSelectedGroup(): Boolean =
+        ewpComboBox.selectedItem is VirtualFile && resolveTargetGroupPath() != null
+
+    fun canRemoveSelectedFiles(): Boolean =
+        ewpComboBox.selectedItem is VirtualFile && selectedFileNodes().isNotEmpty()
+
     fun createNewGroup() {
         val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
         val parentPath = resolveNewGroupParentPath()
@@ -143,6 +159,83 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         indexService.invalidate(selectedEwp)
         reloadTree(selectGroupPath = groupPath)
     }
+
+    fun addFilesToSelectedGroup() {
+        val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
+        val groupPath = resolveTargetGroupPath() ?: return
+        val ewpProject = currentEwpProject() ?: return
+        val toSelect = resolveSuggestedDirectory(ewpProject, groupPath)
+
+        val descriptor = FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor().apply {
+            title = MyBundle["ewpExplorer.addFiles.title"]
+            description = MyBundle["ewpExplorer.addFiles.description"]
+        }
+
+        FileChooser.chooseFiles(descriptor, project, this, toSelect) { chosen ->
+            val files = chosen.filter { it.isValid && !it.isDirectory }
+            if (files.isEmpty()) return@chooseFiles
+
+            val directories = files.mapNotNull { it.parent?.path }.map { FileUtil.toSystemIndependentName(it) }.toSet()
+            if (directories.size > 1) {
+                Messages.showErrorDialog(
+                    this,
+                    MyBundle["ewpExplorer.addFiles.sameDirectory"],
+                    MyBundle["ewpExplorer.addFiles.title"],
+                )
+                return@chooseFiles
+            }
+
+            val additions = files.map { file ->
+                EwpFileWriter.FileAddition(
+                    absolutePath = file.path,
+                    groupPath = groupPath,
+                )
+            }
+            EwpFileWriter.addFiles(selectedEwp, project, additions)
+            indexService.invalidate(selectedEwp)
+            reloadTree(selectGroupPath = groupPath)
+        }
+    }
+
+    fun removeSelectedFilesFromEwp() {
+        val selectedEwp = ewpComboBox.selectedItem as? VirtualFile ?: return
+        val fileNodes = selectedFileNodes()
+        if (fileNodes.isEmpty()) return
+
+        val message = if (fileNodes.size == 1) {
+            MyBundle["ewpExplorer.removeFiles.confirmSingle", fileNodes.first().displayName]
+        } else {
+            MyBundle["ewpExplorer.removeFiles.confirmMultiple", fileNodes.size]
+        }
+        val title = MyBundle["ewpExplorer.removeFiles.title"]
+        if (Messages.showYesNoDialog(this, message, title, Messages.getQuestionIcon()) != Messages.YES) {
+            return
+        }
+
+        val absolutePaths = mutableListOf<String>()
+        val rawPaths = mutableListOf<String>()
+        for (node in fileNodes) {
+            val resolved = node.entry.resolvedPath
+            if (resolved != null) {
+                absolutePaths += resolved
+            } else {
+                rawPaths += node.entry.rawPath
+            }
+        }
+
+        val selectGroupPath = fileNodes.first().groupPath.takeIf { it.isNotEmpty() }
+        if (!EwpFileWriter.removeFiles(selectedEwp, project, absolutePaths, rawPaths)) {
+            return
+        }
+
+        indexService.invalidate(selectedEwp)
+        reloadTree(selectGroupPath = selectGroupPath)
+    }
+
+    private fun selectedFileNodes(): List<EwpTreeNode.FileNode> =
+        tree.selectionPaths
+            ?.mapNotNull { path -> extractTreeNode(path.lastPathComponent) as? EwpTreeNode.FileNode }
+            ?: emptyList()
 
     private fun createSortWarningPanel(): JPanel {
         val fixButton = JButton(MyBundle["ewpExplorer.fixSorting"]).apply {
@@ -240,15 +333,74 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         val selected = tree.selectionPath?.lastPathComponent
         return when (val node = extractTreeNode(selected)) {
             is EwpTreeNode.GroupNode -> node.groupPath
-            is EwpTreeNode.FileNode -> {
-                val parent = tree.selectionPath?.parentPath?.lastPathComponent
-                when (val parentNode = extractTreeNode(parent)) {
-                    is EwpTreeNode.GroupNode -> parentNode.groupPath
-                    else -> emptyList()
-                }
-            }
+            is EwpTreeNode.FileNode -> node.groupPath
             else -> emptyList()
         }
+    }
+
+    /** Target group for Add Files: selected group, or parent group of a selected file. */
+    private fun resolveTargetGroupPath(): List<String>? {
+        val selected = tree.selectionPath?.lastPathComponent
+        return when (val node = extractTreeNode(selected)) {
+            is EwpTreeNode.GroupNode -> node.groupPath
+            is EwpTreeNode.FileNode -> node.groupPath.takeIf { it.isNotEmpty() }
+            else -> null
+        }
+    }
+
+    private fun currentEwpProject(): EwpProject? =
+        (extractTreeNode(tree.model.root) as? EwpTreeNode.Root)?.project
+
+    private fun resolveSuggestedDirectory(ewpProject: EwpProject, groupPath: List<String>): VirtualFile? {
+        val projectRoot = resolveProjectRoot(ewpProject) ?: return ewpProject.ewpFile.parent
+        val suggestedPath = EwpGroupMapper(ewpProject, projectRoot).mapGroupToDirectory(groupPath)
+        return findExistingDirectory(suggestedPath) ?: findExistingDirectory(projectRoot) ?: ewpProject.ewpFile.parent
+    }
+
+    private fun resolveProjectRoot(ewpProject: EwpProject): String? {
+        val contentRoots = ProjectRootManager.getInstance(project).contentRoots.map {
+            FileUtil.toSystemIndependentName(it.path)
+        }
+        if (contentRoots.isEmpty()) {
+            return ewpProject.ewpFile.parent?.path?.let { FileUtil.toSystemIndependentName(it) }
+        }
+
+        val fileDirs = collectResolvedFileDirectories(ewpProject.groups)
+        val matching = contentRoots.filter { root ->
+            fileDirs.any { dir -> FileUtil.startsWith(dir, root) } ||
+                FileUtil.startsWith(FileUtil.toSystemIndependentName(ewpProject.ewpFile.path), root)
+        }
+        return matching.minByOrNull { it.length }
+            ?: contentRoots.minByOrNull { it.length }
+    }
+
+    private fun collectResolvedFileDirectories(groups: List<EwpGroup>): List<String> {
+        val result = mutableListOf<String>()
+        for (group in groups) {
+            for (file in group.files) {
+                val path = file.resolvedPath ?: continue
+                val normalized = FileUtil.toSystemIndependentName(path)
+                val lastSlash = normalized.lastIndexOf('/')
+                if (lastSlash > 0) {
+                    result += normalized.substring(0, lastSlash)
+                }
+            }
+            result += collectResolvedFileDirectories(group.groups)
+        }
+        return result
+    }
+
+    private fun findExistingDirectory(path: String): VirtualFile? {
+        var current: String? = FileUtil.toSystemIndependentName(path)
+        val lfs = LocalFileSystem.getInstance()
+        while (current != null) {
+            val file = lfs.findFileByPath(current)
+            if (file != null && file.isDirectory) return file
+            val lastSlash = current.lastIndexOf('/')
+            if (lastSlash <= 0) break
+            current = current.substring(0, lastSlash)
+        }
+        return null
     }
 
     private fun resolveSiblingGroupNames(parentPath: List<String>): Set<String> {

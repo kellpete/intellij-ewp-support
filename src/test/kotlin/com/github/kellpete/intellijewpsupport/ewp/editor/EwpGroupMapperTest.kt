@@ -51,6 +51,46 @@ class EwpGroupMapperTest {
         assertEquals(listOf("src", "tools"), mapper.mapDirectory("/project/src/tools"))
     }
 
+    @Test
+    fun mapGroupToDirectoryUsesObviousMapping() {
+        val mapper = mapper(
+            files = listOf(
+                fileAt("/project/src/main.cpp", listOf("src")),
+            ),
+        )
+
+        assertEquals("/project/src", mapper.mapGroupToDirectory(listOf("src")))
+    }
+
+    @Test
+    fun mapGroupToDirectoryUsesParentWalk() {
+        val mapper = mapper(
+            files = listOf(
+                fileAt("/project/src/main.cpp", listOf("app")),
+            ),
+        )
+
+        assertEquals("/project/src/tools", mapper.mapGroupToDirectory(listOf("app", "tools")))
+    }
+
+    @Test
+    fun mapGroupToDirectoryUsesShortestPathFallback() {
+        val mapper = mapper(
+            files = listOf(
+                fileAt("/project/src/app/main.cpp", listOf("source", "application")),
+            ),
+        )
+
+        assertEquals("/project/src/tools", mapper.mapGroupToDirectory(listOf("source", "tools")))
+    }
+
+    @Test
+    fun mapGroupToDirectoryUsesFilesystemFallbackWhenNoFilesExist() {
+        val mapper = mapper(files = emptyList())
+
+        assertEquals("/project/src/tools", mapper.mapGroupToDirectory(listOf("src", "tools")))
+    }
+
     private fun mapper(files: List<Pair<String, List<String>>>): EwpGroupMapper {
         val groups = buildGroups(files)
         val project = EwpProject(ewpFile = ewpFile, groups = groups, sortIssues = emptyList())
