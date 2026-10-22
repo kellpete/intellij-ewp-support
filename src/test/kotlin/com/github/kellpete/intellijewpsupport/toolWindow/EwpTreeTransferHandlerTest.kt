@@ -5,6 +5,7 @@ import com.github.kellpete.intellijewpsupport.model.EwpGroup
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.LightVirtualFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -18,7 +19,7 @@ import javax.swing.tree.TreePath
 class EwpTreeTransferHandlerTest {
 
     private val mockProject: Project = mock(Project::class.java)
-    private val mockEwpFile: VirtualFile = mock(VirtualFile::class.java)
+    private val mockEwpFile: VirtualFile = LightVirtualFile("project.ewp")
     private val handler = EwpTreeTransferHandler(
         project = mockProject,
         getSelectedEwpFile = { mockEwpFile },
