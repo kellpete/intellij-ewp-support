@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-10-25
+
+- Updated dependencies
+
 ## [0.0.4] - 2026-10-22
 
 - Fix: EWP Explorer refreshes when `.ewp` files change on disk (e.g. edited in CLion)
