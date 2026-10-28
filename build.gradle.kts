@@ -23,6 +23,7 @@ dependencies {
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
         clion("2026.2")
+        bundledPlugin("com.intellij.clion")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.CLion)
     }
