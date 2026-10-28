@@ -23,8 +23,4 @@
 
 ## [0.0.1] - 2026-09-15
 
-- First release of the plugin
-
-### Added
-
-- Beta Testing
+- "Add to ewp" when creating new files

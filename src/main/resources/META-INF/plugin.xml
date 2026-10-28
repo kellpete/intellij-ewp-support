@@ -4,33 +4,27 @@
     <name>EWP Project Sync</name>
     <vendor>SalPeter</vendor>
     <description><![CDATA[
-    <p>Keep <code>*.ewp</code> project files (from IAR EWARM) correct and in sync with changes in CLion, by avoiding
-    manual, error-prone changes in the xml
-    </p>
+    <p>Keep <code>*.ewp</code> project files (from IAR EWARM) in sync with changes in CLion.</p>
     <h2>Features</h2>
     <ul>
-        <li><strong>Sort on Reformat:</strong> The file lists in the <code>.ewp</code> project file are sorted
-            correctly, like EWARM does
+        <li><strong>Keep the ewp file in sync:</strong> When adding, deleting, or moving source files, the
+            plugin updates the <code>*.ewp</code> project files accordingly.
         </li>
-        <li><strong>Add New Files to ewp:</strong> When creating new source files in the IDE, you can choose to add
-            them to the EWP project file too. The plugin tries to find the best file group based on existing files in
-            the ewp project
+        <li><strong>Ensure correct order of files in ewp:</strong> In case you manually edit the file lists in a
+            <code>*.ewp</code>, use the "Reformat" action to sort the file lists correctly, like EWARM does.
         </li>
-        <li><strong>Delete / Move / Rename Sync:</strong> When you delete, move, or rename source files in the IDE,
-            matching entries in every <code>.ewp</code> that lists them are updated automatically (including group
-            remapping on move and pruning empty groups on delete)
+        <li><strong>Edit the ewp file lists:</strong> The EWP Explorer panel allows to add/remove files,
+            or move them to different groups by drag-and-drop.
         </li>
-        <li><strong>Clickable Paths:</strong> Ctrl/Cmd-click a <code>$PROJ_DIR$</code> path inside an
-            <code>.ewp</code> file to open the referenced source file
+        <li><strong>Remove stale files:</strong> The plugin detects files that are no longer present on disk
+            and offers a quick fix to remove them from the <code>*.ewp</code>.
+        <li><strong>Support for multiple ewp Files:</strong> The plugin detects all <code>*.ewp</code> files in the project
+            tree.
         </li>
-        <li><strong>Work With Multiple ewp Files:</strong> The plugin detects all ewp files in the project tree and
-            considers them when appropriate (e.g. when adding new files)
-        </li>
-        <li><strong>Browse</strong> groups and files in the EWP Explorer tool window</li>
     </ul>
     <h2>What this plugin is not</h2>
-    <p>This plugin can <strong>NOT</strong> load ewp files as a project to compile them. You still need to load a
-        project by the means supported by CLion (e.g. Cmake, compilation database)</p>
+    <p>This plugin can <strong>NOT</strong> load ewp files as a project to build them. You still need to load a
+        project by the means supported in CLion (e.g. Cmake, compilation database)</p>
     <h2>Legal Notice</h2>
     <p>This is an unofficial plugin for <code>.ewp</code> files used with IAR Embedded
         Workbench for Arm (EWARM).
