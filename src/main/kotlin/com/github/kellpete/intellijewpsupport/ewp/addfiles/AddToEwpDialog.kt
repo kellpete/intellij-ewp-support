@@ -1,6 +1,6 @@
 package com.github.kellpete.intellijewpsupport.ewp.addfiles
 
-import com.github.kellpete.intellijewpsupport.MyBundle
+import com.github.kellpete.intellijewpsupport.EwpBundle
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.vfs.VirtualFile
@@ -28,9 +28,9 @@ class AddToEwpDialog(
     }
 
     init {
-        title = MyBundle["addToEwp.dialog.title"]
-        setCancelButtonText(MyBundle["addToEwp.dialog.cancel"])
-        setOKButtonText(MyBundle["addToEwp.dialog.ok"])
+        title = EwpBundle["addToEwp.dialog.title"]
+        setCancelButtonText(EwpBundle["addToEwp.dialog.cancel"])
+        setOKButtonText(EwpBundle["addToEwp.dialog.ok"])
         init()
     }
 
@@ -40,7 +40,7 @@ class AddToEwpDialog(
         val header = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             alignmentX = JComponent.LEFT_ALIGNMENT
-            add(JBLabel(MyBundle["addToEwp.dialog.filesLabel"]).apply {
+            add(JBLabel(EwpBundle["addToEwp.dialog.filesLabel"]).apply {
                 alignmentX = JComponent.LEFT_ALIGNMENT
             })
             add(Box.createVerticalStrut(JBUI.scale(2)))
@@ -48,7 +48,7 @@ class AddToEwpDialog(
                 alignmentX = JComponent.LEFT_ALIGNMENT
             })
             add(Box.createVerticalStrut(JBUI.scale(8)))
-            add(JBLabel(MyBundle["addToEwp.dialog.ewpLabel"]).apply {
+            add(JBLabel(EwpBundle["addToEwp.dialog.ewpLabel"]).apply {
                 alignmentX = JComponent.LEFT_ALIGNMENT
             })
         }

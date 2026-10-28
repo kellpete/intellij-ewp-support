@@ -1,6 +1,6 @@
 package com.github.kellpete.intellijewpsupport.toolWindow
 
-import com.github.kellpete.intellijewpsupport.MyBundle
+import com.github.kellpete.intellijewpsupport.EwpBundle
 import com.github.kellpete.intellijewpsupport.ewp.addfiles.EwpProjectChangeListener
 import com.github.kellpete.intellijewpsupport.ewp.editor.EwpFileWriter
 import com.github.kellpete.intellijewpsupport.ewp.editor.EwpGroupMapper
@@ -75,14 +75,14 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
                 isSelected: Boolean,
                 cellHasFocus: Boolean,
             ) = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus).apply {
-                text = (value as? VirtualFile)?.name ?: MyBundle["ewpExplorer.noEwpSelected"]
+                text = (value as? VirtualFile)?.name ?: EwpBundle["ewpExplorer.noEwpSelected"]
             }
         }
 
         val toolbarRowHeight = ewpComboBox.preferredSize.height
         ewpComboBox.maximumSize = Dimension(Int.MAX_VALUE, toolbarRowHeight)
         val refreshButton = JButton(AllIcons.Actions.Refresh).apply {
-            toolTipText = MyBundle["ewpExplorer.refresh"]
+            toolTipText = EwpBundle["ewpExplorer.refresh"]
             margin = JBUI.emptyInsets()
             isFocusable = false
             preferredSize = JBUI.size(toolbarRowHeight, toolbarRowHeight)
@@ -182,8 +182,8 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         val toSelect = resolveSuggestedDirectory(ewpProject, groupPath)
 
         val descriptor = FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor().apply {
-            title = MyBundle["ewpExplorer.addFiles.title"]
-            description = MyBundle["ewpExplorer.addFiles.description"]
+            title = EwpBundle["ewpExplorer.addFiles.title"]
+            description = EwpBundle["ewpExplorer.addFiles.description"]
         }
 
         FileChooser.chooseFiles(descriptor, project, this, toSelect) { chosen ->
@@ -194,8 +194,8 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             if (directories.size > 1) {
                 Messages.showErrorDialog(
                     this,
-                    MyBundle["ewpExplorer.addFiles.sameDirectory"],
-                    MyBundle["ewpExplorer.addFiles.title"],
+                    EwpBundle["ewpExplorer.addFiles.sameDirectory"],
+                    EwpBundle["ewpExplorer.addFiles.title"],
                 )
                 return@chooseFiles
             }
@@ -222,7 +222,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         if (fileNodes.isEmpty() && groupPaths.isEmpty()) return
 
         val message = buildRemoveFromEwpConfirmMessage(fileNodes, groupPaths)
-        val title = MyBundle["ewpExplorer.removeFiles.title"]
+        val title = EwpBundle["ewpExplorer.removeFiles.title"]
         if (Messages.showYesNoDialog(this, message, title, Messages.getQuestionIcon()) != Messages.YES) {
             return
         }
@@ -259,19 +259,19 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         val groupCount = groupPaths.size
         return when {
             fileCount == 0 && groupCount == 1 ->
-                MyBundle["ewpExplorer.removeFiles.confirmSingleGroup", groupPaths.first().last()]
+                EwpBundle["ewpExplorer.removeFiles.confirmSingleGroup", groupPaths.first().last()]
 
             fileCount == 0 && groupCount > 1 ->
-                MyBundle["ewpExplorer.removeFiles.confirmMultipleGroups", groupCount]
+                EwpBundle["ewpExplorer.removeFiles.confirmMultipleGroups", groupCount]
 
             fileCount == 1 && groupCount == 0 ->
-                MyBundle["ewpExplorer.removeFiles.confirmSingle", fileNodes.first().displayName]
+                EwpBundle["ewpExplorer.removeFiles.confirmSingle", fileNodes.first().displayName]
 
             fileCount > 1 && groupCount == 0 ->
-                MyBundle["ewpExplorer.removeFiles.confirmMultiple", fileCount]
+                EwpBundle["ewpExplorer.removeFiles.confirmMultiple", fileCount]
 
             else ->
-                MyBundle["ewpExplorer.removeFiles.confirmMixed", fileCount, groupCount]
+                EwpBundle["ewpExplorer.removeFiles.confirmMixed", fileCount, groupCount]
         }
     }
 
@@ -286,7 +286,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             ?: emptyList()
 
     private fun createSortWarningPanel(): JPanel {
-        val fixButton = JButton(MyBundle["ewpExplorer.fixSorting"]).apply {
+        val fixButton = JButton(EwpBundle["ewpExplorer.fixSorting"]).apply {
             addActionListener { fixSortingForSelectedEwp() }
         }
 
@@ -299,7 +299,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     }
 
     private fun createMissingFilesWarningPanel(): JPanel {
-        val fixButton = JButton(MyBundle["ewpExplorer.removeMissingFiles"]).apply {
+        val fixButton = JButton(EwpBundle["ewpExplorer.removeMissingFiles"]).apply {
             addActionListener { removeMissingFilesForSelectedEwp() }
         }
 
@@ -380,7 +380,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         if (ewpProject == null) {
             clearTree()
             hideWarnings()
-            statusLabel.text = MyBundle["ewpExplorer.parseError", selectedEwp.name]
+            statusLabel.text = EwpBundle["ewpExplorer.parseError", selectedEwp.name]
             return
         }
 
@@ -507,13 +507,13 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private fun showEmptyState() {
         clearTree()
         hideWarnings()
-        statusLabel.text = MyBundle["ewpExplorer.emptyState"]
+        statusLabel.text = EwpBundle["ewpExplorer.emptyState"]
     }
 
     private fun updateWarnings(ewpProject: EwpProject) {
         val sortIssueCount = ewpProject.sortIssueCount
         if (sortIssueCount > 0) {
-            sortWarningLabel.text = MyBundle["ewpExplorer.sortWarning", sortIssueCount]
+            sortWarningLabel.text = EwpBundle["ewpExplorer.sortWarning", sortIssueCount]
             sortWarningPanel.isVisible = true
         } else {
             sortWarningPanel.isVisible = false
@@ -521,7 +521,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         val missingFileCount = ewpProject.missingFileCount
         if (missingFileCount > 0) {
-            missingFilesWarningLabel.text = MyBundle["ewpExplorer.missingFilesWarning", missingFileCount]
+            missingFilesWarningLabel.text = EwpBundle["ewpExplorer.missingFilesWarning", missingFileCount]
             missingFilesWarningPanel.isVisible = true
         } else {
             missingFilesWarningPanel.isVisible = false

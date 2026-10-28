@@ -1,6 +1,6 @@
 package com.github.kellpete.intellijewpsupport.toolWindow
 
-import com.github.kellpete.intellijewpsupport.MyBundle
+import com.github.kellpete.intellijewpsupport.EwpBundle
 import com.intellij.icons.AllIcons
 import com.intellij.ide.CommonActionsManager
 import com.intellij.ide.DefaultTreeExpander
@@ -48,7 +48,7 @@ private class ExpandSelectedAction(
     private val tree: JTree,
     contextComponent: JComponent,
 ) : DumbAwareAction(
-    MyBundle.messagePointer("ewpExplorer.expandSelected"),
+    EwpBundle.messagePointer("ewpExplorer.expandSelected"),
     AllIcons.Actions.Expandall,
 ) {
     init {
@@ -82,7 +82,7 @@ private class ExpandSelectedAction(
 private class NewGroupAction(
     private val panel: EwpExplorerPanel,
 ) : DumbAwareAction(
-    MyBundle.messagePointer("ewpExplorer.newGroup"),
+    EwpBundle.messagePointer("ewpExplorer.newGroup"),
     AllIcons.Actions.NewFolder,
 ) {
     override fun actionPerformed(e: AnActionEvent) {
@@ -99,7 +99,7 @@ private class NewGroupAction(
 private class AddFilesAction(
     private val panel: EwpExplorerPanel,
 ) : DumbAwareAction(
-    MyBundle.messagePointer("ewpExplorer.addFiles"),
+    EwpBundle.messagePointer("ewpExplorer.addFiles"),
     AllIcons.Actions.AddFile,
 ) {
     override fun actionPerformed(e: AnActionEvent) {
@@ -117,7 +117,7 @@ internal class RemoveFilesAction(
     private val panel: EwpExplorerPanel,
     tree: JTree,
 ) : DumbAwareAction(
-    MyBundle.messagePointer("ewpExplorer.removeFiles"),
+    EwpBundle.messagePointer("ewpExplorer.removeFiles"),
     AllIcons.Actions.GC,
 ) {
     init {
@@ -139,8 +139,8 @@ internal object EwpNewGroupDialog {
     fun askGroupName(parentComponent: JComponent, existingSiblingNames: Set<String>): String? {
         val name = Messages.showInputDialog(
             parentComponent,
-            MyBundle["ewpExplorer.newGroup.prompt"],
-            MyBundle["ewpExplorer.newGroup.title"],
+            EwpBundle["ewpExplorer.newGroup.prompt"],
+            EwpBundle["ewpExplorer.newGroup.title"],
             AllIcons.Actions.NewFolder,
             "",
             object : InputValidatorEx {
@@ -153,8 +153,8 @@ internal object EwpNewGroupDialog {
                 override fun getErrorText(inputString: String?): String? {
                     val trimmed = inputString?.trim().orEmpty()
                     return when {
-                        trimmed.isEmpty() -> MyBundle["ewpExplorer.newGroup.emptyName"]
-                        existingSiblingNames.contains(trimmed) -> MyBundle["ewpExplorer.newGroup.duplicateName"]
+                        trimmed.isEmpty() -> EwpBundle["ewpExplorer.newGroup.emptyName"]
+                        existingSiblingNames.contains(trimmed) -> EwpBundle["ewpExplorer.newGroup.duplicateName"]
                         else -> null
                     }
                 }
