@@ -1,4 +1,4 @@
-# EWP sync plugin for CLion
+# EWP Project Sync plugin for CLion
 
 ![Build](https://github.com/kellpete/intellij-ewp-support/workflows/Build/badge.svg)
 [![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)

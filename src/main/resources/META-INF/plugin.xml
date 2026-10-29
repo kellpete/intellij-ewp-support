@@ -4,31 +4,28 @@
     <name>EWP Project Sync</name>
     <vendor>SalPeter</vendor>
     <description><![CDATA[
-    <p>Keep <code>*.ewp</code> project files (from IAR EWARM) in sync with changes in CLion.</p>
+    <p>Keep IAR EWARM <code>*.ewp</code> project files in sync with CLion.</p>
     <h2>Features</h2>
     <ul>
-        <li><strong>Keep the ewp file in sync:</strong> When adding, deleting, or moving source files, the
-            plugin updates the <code>*.ewp</code> project files accordingly.
+        <li><strong>Synchronize project files:</strong> Automatically update <code>ewp</code> project files when
+            source files are added, deleted, or moved.
         </li>
-        <li><strong>Ensure correct order of files in ewp:</strong> In case you manually edit the file lists in a
-            <code>*.ewp</code>, use the "Reformat" action to sort the file lists correctly, like EWARM does.
+        <li><strong>Ensure correct sorting of project files:</strong> Use "Reformat" on <code>ewp</code> files to match
+            EWARM's file ordering.
         </li>
-        <li><strong>Edit the ewp file lists:</strong> The EWP Explorer panel allows to add/remove files,
-            or move them to different groups by drag-and-drop.
+        <li><strong>Edit project files:</strong> Add, remove, or move files between <code>ewp</code> groups in the EWP
+            Explorer.
         </li>
-        <li><strong>Remove stale files:</strong> The plugin detects files that are no longer present on disk
-            and offers a quick fix to remove them from the <code>*.ewp</code>.
-        <li><strong>Support for multiple ewp Files:</strong> The plugin detects all <code>*.ewp</code> files in the project
-            tree.
+        <li><strong>Remove missing files:</strong> Find files no longer on disk and remove them from the <code>ewp</code>
+            with a quick fix.
         </li>
     </ul>
     <h2>What this plugin is not</h2>
-    <p>This plugin can <strong>NOT</strong> load ewp files as a project to build them. You still need to load a
-        project by the means supported in CLion (e.g. Cmake, compilation database)</p>
+    <p>This plugin does not load or build projects from <code>ewp</code> files. Load your project in CLion using a
+        supported method, such as CMake or a compilation database.</p>
     <h2>Legal Notice</h2>
-    <p>This is an unofficial plugin for <code>.ewp</code> files used with IAR Embedded
-        Workbench for Arm (EWARM).
-        This plugin is not affiliated with IAR Systems.</p>
+    <p>This is an unofficial plugin that supports working with <code>ewp</code> files created by IAR Embedded Workbench
+        for Arm (EWARM). It is not affiliated with IAR Systems.</p>
     ]]></description>
 
     <depends>com.intellij.modules.clion</depends>
