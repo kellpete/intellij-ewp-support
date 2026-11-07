@@ -88,4 +88,50 @@ class EwpReformatTest : BasePlatformTestCase() {
         assertFalse(text.contains("<data></data>"))
         assertTrue(text.contains("<data />") || text.contains("<data/>"))
     }
+
+    fun testOrderingInsideGroup() {
+        // This test ensures that the order of elements inside a group is correct.
+        // In groups, the order is name, groups, files, configurations.
+        // Note that in the project node, the order is different: configuration, groups, files
+        val original =
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <project>
+                <configuration>
+                    <settings>
+                        <name>General</name>
+                    </settings>
+                </configuration>
+                <group>
+                    <name>src</name>
+                    <group>
+                        <name>myGroup</name>
+                        <file>
+                            <name>src\myGroup\some.cpp</name>
+                        </file>
+                    </group>
+                    <file>
+                        <name>src\a.cpp</name>
+                    </file>
+                    <configuration>
+                        <name>Debug</name>
+                        <settings>
+                            <name>foo</name>
+                        </settings>
+                    </configuration>
+                </group>
+                <file>
+                    <name>top-level.cpp</name>
+                </file>
+                <projectSettings>EvenMoreSettings</projectSettings>
+            </project>
+            """.trimIndent() + "\n"
+
+        val psiFile = myFixture.configureByText("data.ewp", original)
+
+        CodeStyleManager.getInstance(project).reformatText(psiFile, 0, psiFile.textLength)
+
+        assertEquals(original, myFixture.editor.document.text)
+
+    }
 }

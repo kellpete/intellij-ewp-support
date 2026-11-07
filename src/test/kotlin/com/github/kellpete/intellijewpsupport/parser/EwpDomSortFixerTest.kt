@@ -7,6 +7,26 @@ import org.junit.Test
 class EwpDomSortFixerTest {
 
     @Test
+    fun movesGroupsAndFilesAfterLastConfiguration() {
+        val input = """
+            <project>
+                <configuration><name>Debug</name></configuration>
+                <group><name>g</name></group>
+                <configuration><name>Release</name></configuration>
+                <projectSettings><x>1</x></projectSettings>
+                <file><name>a.cpp</name></file>
+            </project>
+            """.trimIndent()
+
+        val output = EwpDomSortFixer.sortAndFormat(input)
+
+        val lastConfig = output.indexOf("<name>Release</name>")
+        assertTrue(lastConfig < output.indexOf("<name>g</name>"))
+        assertTrue(output.indexOf("<name>g</name>") < output.indexOf("<name>a.cpp</name>"))
+        assertTrue(output.indexOf("<name>a.cpp</name>") < output.indexOf("<projectSettings>"))
+    }
+
+    @Test
     fun fixesUnsortedSubgroupsAndFiles() {
         val input = """
             <project>

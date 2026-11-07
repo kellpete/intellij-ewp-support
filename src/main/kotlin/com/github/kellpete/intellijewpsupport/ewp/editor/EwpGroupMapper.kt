@@ -14,7 +14,12 @@ class EwpGroupMapper(
         val groupPath: List<String>,
     )
 
-    private val fileLocations: List<FileLocation> by lazy { collectFileLocations(ewpProject.groups, emptyList()) }
+    private val fileLocations: List<FileLocation> by lazy {
+        val topLevel = ewpProject.files.mapNotNull { file ->
+            parentDirectoryOf(file.resolvedPath)?.let { FileLocation(it, emptyList()) }
+        }
+        topLevel + collectFileLocations(ewpProject.groups, emptyList())
+    }
 
     fun mapDirectory(targetDirectory: String): List<String> {
         val normalizedTarget = normalizePath(targetDirectory)

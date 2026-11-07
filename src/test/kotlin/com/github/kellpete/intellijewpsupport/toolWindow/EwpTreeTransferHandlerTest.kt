@@ -146,7 +146,7 @@ class EwpTreeTransferHandlerTest {
     }
 
     @Test
-    fun isValidDropRejectsFileMovedToRoot() {
+    fun isValidDropAcceptsFileMovedToRoot() {
         val dropTarget = EwpTreeTransferHandler.DropTargetInfo(
             targetGroupPath = emptyList(),
             targetGroup = null,
@@ -160,7 +160,7 @@ class EwpTreeTransferHandlerTest {
         )
         val data = EwpDragData(mockEwpFile, listOf(file), emptyList())
 
-        assertFalse(handler.isValidDrop(data, dropTarget))
+        assertTrue(handler.isValidDrop(data, dropTarget))
     }
 
     @Test

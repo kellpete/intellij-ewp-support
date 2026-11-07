@@ -11,7 +11,7 @@ I want to create a plugin that will:
   structure
 - Offers a view that shows which ewp files include the currently opened file, and which ewps don't. Allow to quickly
   add/remove it from these ewps
-- Makes sure the alphabetical sorting stays intact on changes. 
+- Makes sure the alphabetical sorting stays intact on changes.
 - Warn if sorting is incorrect, and offer to fix it.
 
 Nice to haves:
@@ -27,11 +27,13 @@ files, etc). This is again similar to multiple targets in cmakelists.
 
 ## EWP file structure and formatting rules
 
-Inside the xml file, on path project/group there is a hierarchical view of the project's
-source files. Each group contains any number of subgroups and files.  The placeholder `$PROJ_DIR$` refers to the
+Inside the xml file, in the root element "project", there are any number of "file" and "group" elements to form a
+hierarchical view of the project's source files. Each group contains any number of subgroups and files. The placeholder
+`$PROJ_DIR$` refers to the
 directory that contains the ewp file.
 
 When changing the ewp file (e.g. to fix sorting), ensure the following formatting:
+
 - Use expanded form for empty elements in general (e.g. `<state></state>`)
 - Exception: empty `<data>` elements must use self-closing form: `<data />`
 - Do not remove the header `<?xml version="1.0" encoding="UTF-8"?>`
@@ -42,11 +44,24 @@ When changing the ewp file (e.g. to fix sorting), ensure the following formattin
 
 Files and groups in the ewp must be sorted according to following rules.
 
-In each group:
-- Subgroups come first and are ordered alphabetically 
-- Files come second and are also ordered alphabetically
-  - Only the filename component is relevant for the sorting. E.g. for `$PROJ_DIR$\..\config\aaa.txt`, only `aaa.txt` is
-    relevant for the sorting
+### Inside a group
+
+In each group element, the xml must be sorted in following order:
+
+1. "name" element
+2. Subgroups ("group" elements), ordered alphabetically
+3. Files ("file" elements), also ordered alphabetically
+    - Only the filename component is relevant for the sorting. E.g. for `$PROJ_DIR$\..\config\aaa.txt`, only `aaa.txt`
+      is relevant for the sorting
+4. Settings in a "configuration" element. Do not apply any sorting inside this element.
+
+### XML root element "project"
+
+The root element "project" has a different order: fileVersion, configuration, group, file, projectSettings. More xml
+tags may be added by future versions, so the plugin should not assume that these are the only tags in the root node. The
+plugin should only ensure that group nodes are *after* the last configuration node, and file nodes are *after* the last
+group node. Multiple group and file nodes are allowed, and should be sorted alphabetically just like the ones inside
+group elements.
 
 ## Mapping of directory structure to ewp groups
 

@@ -27,8 +27,8 @@ The EWP Explorer panel allows developers to view and manage the hierarchical gro
 | Source Drag Selection | Target Node in Tree | Outcome |
 |-----------------------|---------------------|---------|
 | **File(s)** | **Group Node** | Moves selected file(s) into the target group. |
-| **File(s)** | **File Node** | Resolves target to the file's parent group; moves dragged file(s) into that group. |
-| **File(s)** | **Root Node** | **Rejected** (files cannot exist at root level in EWP). |
+| **File(s)** | **File Node** | Resolves target to the file's parent (a group, or the project root for top-level files); moves dragged file(s) there. |
+| **File(s)** | **Root Node** | Moves selected file(s) to top-level files directly under `<project>`. |
 | **Group(s)** | **Group Node** | Moves selected group(s) as subgroups into the target group. |
 | **Group(s)** | **File Node** | Resolves target to the file's parent group; moves dragged group(s) into that group. |
 | **Group(s)** | **Root Node** | Moves selected group(s) to top-level groups directly under `<project>`. |
@@ -55,7 +55,7 @@ After a successful drop:
 ### 3.2 Moving to the Root Node
 
 - **Groups**: **Allowed**. If a subgroup `services` (inside `src`) is dragged onto the project root node, it becomes a top-level group directly under `<project>`.
-- **Files**: **Disallowed**. The EWP XML schema and `EwpParser` only recognize files inside `<group>` tags. `canImport` displays the "not allowed" cursor if any dragged item is a file and the target is `Root`.
+- **Files**: **Allowed**. `<file>` elements may sit directly under `<project>` as well as inside groups. A file dragged onto the root becomes a top-level file (unless it is already top-level, or a file with the same path exists there).
 
 ### 3.3 Self and Descendant Cycles
 
@@ -65,7 +65,7 @@ After a successful drop:
 
 ### 3.4 Same-Parent / No-Op Drops
 
-- Dropping a file into its current parent group is rejected.
+- Dropping a file into its current parent (group or project root) is rejected.
 - Dropping a group into its current parent group is rejected.
 - Dropping a top-level group onto the Root node is rejected (it is already at root).
 - If the drop would produce no change, `canImport` returns `false`.
@@ -73,7 +73,7 @@ After a successful drop:
 ### 3.5 Name Collisions & Duplicates
 
 - **Duplicate Group Names**: EWP groups under the same parent must have distinct names (case-insensitive). If the target group (or root) already contains a child group with the dragged group's name, the drop is rejected.
-- **Duplicate Files**: A group cannot contain the same file multiple times. If the target group already contains a file with matching path (`rawPath` or normalized resolved path), the drop is rejected.
+- **Duplicate Files**: A group (or the project root) cannot contain the same file multiple times. If the target group already contains a file with matching path (`rawPath` or normalized resolved path), the drop is rejected.
 - **Collisions Within the Dragged Batch**: If a multi-selection contains duplicate group names (e.g. `src/tools` and `libs/tools`) or duplicate files, the batch drop is rejected to prevent collisions at the target.
 
 ### 3.6 Ancestor-Descendant Multi-Selection Filtering
@@ -83,9 +83,10 @@ After a successful drop:
 
 ### 3.7 XML Structure & Suffix Tag Preservation
 
-- In EWP XML, `<projectSettings>` appears at the end of `<project>` after all `<group>` elements.
-- When adding or moving a group to the project root, the group must not be appended after `<projectSettings>`.
-- `addContentToContainer` ensures that new or moved elements are inserted before any trailing suffix elements (`<projectSettings>`), allowing `EwpDomSortFixer` to properly classify and sort them within the reorderable block.
+- In EWP XML, `<group>` and top-level `<file>` elements always come after the last `<configuration>` element of `<project>`, and before `<projectSettings>`.
+- When adding or moving a group or file to the project root, it must not be appended after `<projectSettings>`.
+- `addContentToContainer` inserts new or moved elements after the last existing `<group>`/`<file>`, otherwise after the last `<configuration>` (or `<name>` in a group).
+- `EwpDomSortFixer` also relocates any `<group>`/`<file>` found elsewhere in the container to directly after the last `<configuration>`, sorted (groups first, then files).
 
 ### 3.8 Cross-Project Isolation
 
@@ -153,7 +154,7 @@ To ensure responsive and glitch-free drag-and-drop:
   - `movesFileToAnotherGroup`: Verifies file relocation and alphabetical re-sorting among siblings.
   - `movesFileCreatesTargetGroupIfAbsent`: Verifies creation of target group if absent during a node move.
   - `movesFileRejectsSameGroup` & `movesFileRejectsDuplicateInTarget`: Verifies no-ops for invalid file moves.
-  - `movesFileRejectsEmptyTargetGroup`: Verifies files cannot be moved to root.
+  - `movesFileToTopLevel`: Verifies a file can be moved to the project root.
   - `movesGroupToAnotherGroup`: Verifies moving nested group and preserving its contents.
   - `movesGroupToRoot`: Verifies group promotion to root and suffix tag (`<projectSettings>`) preservation.
   - `movesGroupRejectsSelfAndDescendant`: Verifies cycle prevention.

@@ -9,6 +9,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+### Fixed
+
+- Correct handling of files placed directly in the project element (outside of groups).
+
+## [0.0.5] - 2026-10-30
+
+### Added
+
 - EWP Explorer: Warn about missing files listed in the EWP and offer to remove them.
 - EWP Explorer: Add context-menu actions to add/remove groups and files.
 - EWP Explorer: Support drag-and-drop to move files and groups to different groups.

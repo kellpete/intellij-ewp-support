@@ -46,8 +46,8 @@ class EwpTreeTransferable(private val data: EwpDragData) : Transferable {
     override fun isDataFlavorSupported(flavor: DataFlavor?): Boolean {
         if (flavor == null) return false
         return flavor == DATA_FLAVOR ||
-            (flavor.isMimeTypeEqual(DataFlavor.javaJVMLocalObjectMimeType) &&
-                flavor.representationClass == EwpDragData::class.java)
+                (flavor.isMimeTypeEqual(DataFlavor.javaJVMLocalObjectMimeType) &&
+                        flavor.representationClass == EwpDragData::class.java)
     }
 
     override fun getTransferData(flavor: DataFlavor?): Any {
@@ -89,12 +89,11 @@ class EwpTreeTransferHandler(
                 is EwpTreeNode.GroupNode -> {
                     groups += DraggedGroup(node.group, node.groupPath)
                 }
+
                 is EwpTreeNode.FileNode -> {
-                    val groupPath = node.groupPath.ifEmpty {
-                        resolveParentGroupPath(path) ?: continue
-                    }
-                    files += DraggedFile(node.entry, groupPath)
+                    files += DraggedFile(node.entry, node.groupPath)
                 }
+
                 null -> continue
             }
         }
@@ -194,22 +193,34 @@ class EwpTreeTransferHandler(
                 rootProject = null,
                 isRoot = false,
             )
+
             is EwpTreeNode.Root -> DropTargetInfo(
                 targetGroupPath = emptyList(),
                 targetGroup = null,
                 rootProject = targetNode.project,
                 isRoot = true,
             )
+
             is EwpTreeNode.FileNode -> {
                 val parentPath = targetPath.parentPath ?: return null
-                val parentNode = EwpTreeStructure.extractNode(parentPath.lastPathComponent) as? EwpTreeNode.GroupNode
-                    ?: return null
-                DropTargetInfo(
-                    targetGroupPath = parentNode.groupPath,
-                    targetGroup = parentNode.group,
-                    rootProject = null,
-                    isRoot = false,
-                )
+                val parentNode = EwpTreeStructure.extractNode(parentPath.lastPathComponent) ?: return null
+                when (parentNode) {
+                    is EwpTreeNode.GroupNode -> DropTargetInfo(
+                        targetGroupPath = parentNode.groupPath,
+                        targetGroup = parentNode.group,
+                        rootProject = null,
+                        isRoot = false,
+                    )
+
+                    is EwpTreeNode.Root -> DropTargetInfo(
+                        targetGroupPath = emptyList(),
+                        targetGroup = null,
+                        rootProject = parentNode.project,
+                        isRoot = true,
+                    )
+
+                    is EwpTreeNode.FileNode -> null
+                }
             }
         }
     }
@@ -218,8 +229,11 @@ class EwpTreeTransferHandler(
         if (data.files.isEmpty() && data.groups.isEmpty()) return false
 
         if (data.files.isNotEmpty()) {
-            if (target.isRoot) return false
-            val targetGroup = target.targetGroup ?: return false
+            val targetFiles = if (target.isRoot) {
+                target.rootProject?.files ?: return false
+            } else {
+                target.targetGroup?.files ?: return false
+            }
 
             val draggedRawPaths = data.files.map { normalizePath(it.entry.rawPath) }
             if (draggedRawPaths.distinct().size != draggedRawPaths.size) return false
@@ -227,7 +241,7 @@ class EwpTreeTransferHandler(
             for (file in data.files) {
                 if (file.sourceGroupPath == target.targetGroupPath) return false
                 val normalizedRaw = normalizePath(file.entry.rawPath)
-                val alreadyExists = targetGroup.files.any {
+                val alreadyExists = targetFiles.any {
                     normalizePath(it.rawPath) == normalizedRaw
                 }
                 if (alreadyExists) return false
@@ -259,14 +273,6 @@ class EwpTreeTransferHandler(
         val pathList = paths.toList()
         return pathList.filter { candidate ->
             pathList.none { other -> other != candidate && other.isDescendant(candidate) }
-        }
-    }
-
-    private fun resolveParentGroupPath(path: TreePath): List<String>? {
-        val parentPath = path.parentPath ?: return null
-        return when (val parentNode = EwpTreeStructure.extractNode(parentPath.lastPathComponent)) {
-            is EwpTreeNode.GroupNode -> parentNode.groupPath
-            else -> null
         }
     }
 

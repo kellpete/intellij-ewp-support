@@ -168,7 +168,6 @@ object EwpFileWriter {
         targetGroupPath: List<String>,
     ): Boolean {
         if (sourceGroupPath == targetGroupPath) return false
-        if (targetGroupPath.isEmpty()) return false
 
         val sourceGroup = findGroup(root, sourceGroupPath) ?: return false
         val targetGroup = findOrCreateGroup(root, targetGroupPath)
@@ -241,7 +240,7 @@ object EwpFileWriter {
 
             val targetGroup = findOrCreateGroup(root, addition.groupPath)
             val fileElement = Element("file").addContent(Element("name").setText(encodedPath))
-            targetGroup.addContent(fileElement)
+            addContentToContainer(targetGroup, fileElement)
             existingPaths += encodedPath
             changed = true
         }
@@ -334,7 +333,7 @@ object EwpFileWriter {
 
             val targetGroup = findOrCreateGroup(root, move.newGroupPath)
             val fileElement = Element("file").addContent(Element("name").setText(encodedPath))
-            targetGroup.addContent(fileElement)
+            addContentToContainer(targetGroup, fileElement)
             existingPaths += encodedPath
         }
 
@@ -429,17 +428,14 @@ object EwpFileWriter {
         path.trim().replace('\\', '/')
 
     private fun addContentToContainer(container: Element, element: Element) {
-        val childElements = container.children.toList()
-        val lastGroupOrFile = childElements.indexOfLast { it.name == "group" || it.name == "file" }
-        val insertIndex = if (lastGroupOrFile >= 0) {
-            lastGroupOrFile + 1
+        val anchor = container.children.lastOrNull { it.name == "group" || it.name == "file" }
+            ?: (if (container.name == "group") container.getChild("name") else null)
+            ?: container.children.lastOrNull { it.name == "configuration" }
+            ?: container.getChild("name")
+        if (anchor != null) {
+            container.addContent(container.indexOf(anchor) + 1, element)
         } else {
-            childElements.takeWhile { it.name != "group" && it.name != "file" && it.name != "projectSettings" }.size
-        }
-        if (insertIndex in 0..childElements.size) {
-            container.addContent(insertIndex, element)
-        } else {
-            container.addContent(element)
+            container.addContent(0, element)
         }
     }
 

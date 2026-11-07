@@ -10,19 +10,16 @@ object EwpMissingFileValidator {
         val issues = mutableListOf<EwpMissingFileIssue>()
         for (group in groups) {
             val path = parentPath + group.name
-            for (file in group.files) {
-                if (!existsOnDisk(file.resolvedPath)) {
-                    issues += EwpMissingFileIssue(
-                        groupPath = path,
-                        rawPath = file.rawPath,
-                        resolvedPath = file.resolvedPath,
-                    )
-                }
-            }
+            issues += findMissingInFiles(group.files, path)
             issues += findMissingFiles(group.groups, path)
         }
         return issues
     }
+
+    fun findMissingInFiles(files: List<EwpFileEntry>, groupPath: List<String>): List<EwpMissingFileIssue> =
+        files.filter { !existsOnDisk(it.resolvedPath) }.map {
+            EwpMissingFileIssue(groupPath = groupPath, rawPath = it.rawPath, resolvedPath = it.resolvedPath)
+        }
 
     private fun existsOnDisk(resolvedPath: String?): Boolean {
         if (resolvedPath.isNullOrBlank()) return false

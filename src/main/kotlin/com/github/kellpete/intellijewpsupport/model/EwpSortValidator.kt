@@ -16,16 +16,23 @@ object EwpSortValidator {
         return listOf(EwpSortIssue(groupPath, EwpSortIssueType.GROUPS_AFTER_FILES))
     }
 
-    private fun validateGroup(group: EwpGroup, path: List<String>): List<EwpSortIssue> {
+    fun validateContainer(
+        groups: List<EwpGroup>,
+        files: List<EwpFileEntry>,
+        path: List<String>,
+    ): List<EwpSortIssue> {
         val issues = mutableListOf<EwpSortIssue>()
-
-        if (!isAlphabeticallySorted(group.groups.map { it.name })) {
+        if (!isAlphabeticallySorted(groups.map { it.name })) {
             issues += EwpSortIssue(path, EwpSortIssueType.SUBGROUPS_NOT_SORTED)
         }
-        if (!isAlphabeticallySorted(group.files.map { it.displayName })) {
+        if (!isAlphabeticallySorted(files.map { it.displayName })) {
             issues += EwpSortIssue(path, EwpSortIssueType.FILES_NOT_SORTED)
         }
+        return issues
+    }
 
+    private fun validateGroup(group: EwpGroup, path: List<String>): List<EwpSortIssue> {
+        val issues = validateContainer(group.groups, group.files, path).toMutableList()
         issues += validateGroups(group.groups, path)
         return issues
     }

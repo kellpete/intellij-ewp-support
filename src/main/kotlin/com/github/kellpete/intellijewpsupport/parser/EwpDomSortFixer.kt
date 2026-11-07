@@ -16,11 +16,28 @@ object EwpDomSortFixer {
 
     private fun sortContainerChildren(container: Element) {
         val childElements = container.children.toList()
-        val prefix = childElements.takeWhile { it.name != "group" && it.name != "file" }
-        val reorderable = childElements
-            .drop(prefix.size)
-            .takeWhile { it.name == "group" || it.name == "file" }
-        val suffix = childElements.drop(prefix.size + reorderable.size)
+        val isReorderable = { e: Element -> e.name == "group" || e.name == "file" }
+        val reorderable = childElements.filter(isReorderable)
+        val others = childElements.filterNot(isReorderable)
+        val isGroup = container.name == "group"
+        val prefix: List<Element>
+        val suffix: List<Element>
+        if (isGroup) {
+            // Inside a group: name, subgroups, files, then configurations and anything else.
+            prefix = others.filter { it.name == "name" }
+            suffix = others.filter { it.name != "name" }
+        } else {
+            val lastConfiguration = others.indexOfLast { it.name == "configuration" }
+            val firstReorderable = childElements.indexOfFirst(isReorderable)
+            // Groups and files go after the last configuration; otherwise stay where they were.
+            val anchor = when {
+                lastConfiguration >= 0 -> lastConfiguration + 1
+                firstReorderable >= 0 -> childElements.take(firstReorderable).count { !isReorderable(it) }
+                else -> others.size
+            }
+            prefix = others.take(anchor)
+            suffix = others.drop(anchor)
+        }
 
         val sortedGroups = reorderable
             .filter { it.name == "group" }

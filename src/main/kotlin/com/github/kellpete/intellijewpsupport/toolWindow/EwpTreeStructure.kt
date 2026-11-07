@@ -52,7 +52,7 @@ object EwpTreeStructure {
         return when (node) {
             is EwpTreeNode.Root -> ewpProject.groups.map { group ->
                 EwpTreeNode.GroupNode(group, listOf(group.name))
-            }
+            } + ewpProject.files.map { EwpTreeNode.FileNode(it, emptyList()) }
 
             is EwpTreeNode.GroupNode -> {
                 val childGroups = node.group.groups.map { group ->

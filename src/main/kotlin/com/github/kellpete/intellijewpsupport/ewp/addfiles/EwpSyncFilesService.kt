@@ -115,16 +115,31 @@ object EwpSyncFilesService {
                 matched += normalized
             }
         }
+        collectTopLevelPaths(ewpProject, ewpFile) { resolved ->
+            val normalized = normalizePath(resolved)
+            if (normalizedTargets.any { target -> pathEqualsOrUnder(normalized, target) }) {
+                matched += normalized
+            }
+        }
         return matched
+    }
+
+    private fun collectTopLevelPaths(ewpProject: EwpProject, ewpFile: VirtualFile, consumer: (String) -> Unit) {
+        for (file in ewpProject.files) {
+            val resolved = file.resolvedPath ?: EwpPathResolver.resolve(ewpFile, file.rawPath)
+            if (resolved != null) consumer(resolved)
+        }
     }
 
     private fun isPathListed(ewpProject: EwpProject, ewpFile: VirtualFile, normalizedAbsolutePath: String): Boolean {
         var found = false
-        collectResolvedPaths(ewpProject.groups, ewpFile) { resolved ->
+        val check = { resolved: String ->
             if (FileUtil.pathsEqual(normalizePath(resolved), normalizedAbsolutePath)) {
                 found = true
             }
         }
+        collectResolvedPaths(ewpProject.groups, ewpFile, check)
+        collectTopLevelPaths(ewpProject, ewpFile, check)
         return found
     }
 
@@ -132,7 +147,14 @@ object EwpSyncFilesService {
         ewpProject: EwpProject,
         ewpFile: VirtualFile,
         normalizedAbsolutePath: String,
-    ): List<String>? = findGroupPathForFile(ewpProject.groups, ewpFile, normalizedAbsolutePath, emptyList())
+    ): List<String>? {
+        val topLevel = ewpProject.files.any { file ->
+            val resolved = file.resolvedPath ?: EwpPathResolver.resolve(ewpFile, file.rawPath)
+            resolved != null && FileUtil.pathsEqual(normalizePath(resolved), normalizedAbsolutePath)
+        }
+        if (topLevel) return emptyList()
+        return findGroupPathForFile(ewpProject.groups, ewpFile, normalizedAbsolutePath, emptyList())
+    }
 
     private fun findGroupPathForFile(
         groups: List<EwpGroup>,

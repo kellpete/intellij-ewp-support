@@ -26,7 +26,7 @@ object EwpSiblingEwpSelector {
 
     fun isFileListedInEwp(ewpFile: VirtualFile, ewpProject: EwpProject, targetFile: VirtualFile): Boolean {
         val targetPath = normalizePath(targetFile.path)
-        return collectResolvedPaths(ewpProject.groups, ewpFile).contains(targetPath)
+        return collectResolvedPaths(ewpProject, ewpFile).contains(targetPath)
     }
 
     fun needsDialog(
@@ -49,14 +49,18 @@ object EwpSiblingEwpSelector {
         ewpFile: VirtualFile,
         directories: Set<String>,
     ): Boolean {
-        return collectResolvedPaths(ewpProject.groups, ewpFile).any { resolvedPath ->
+        return collectResolvedPaths(ewpProject, ewpFile).any { resolvedPath ->
             parentDirectory(resolvedPath) in directories
         }
     }
 
-    private fun collectResolvedPaths(groups: List<EwpGroup>, ewpFile: VirtualFile): Set<String> {
+    private fun collectResolvedPaths(ewpProject: EwpProject, ewpFile: VirtualFile): Set<String> {
         val paths = mutableSetOf<String>()
-        collectResolvedPaths(groups, ewpFile, paths)
+        collectResolvedPaths(ewpProject.groups, ewpFile, paths)
+        for (file in ewpProject.files) {
+            val resolved = file.resolvedPath ?: EwpPathResolver.resolve(ewpFile, file.rawPath)
+            if (resolved != null) paths += normalizePath(resolved)
+        }
         return paths
     }
 

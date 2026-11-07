@@ -4,6 +4,7 @@ import com.github.kellpete.intellijewpsupport.EwpBundle
 import com.github.kellpete.intellijewpsupport.ewp.addfiles.EwpProjectChangeListener
 import com.github.kellpete.intellijewpsupport.ewp.editor.EwpFileWriter
 import com.github.kellpete.intellijewpsupport.ewp.editor.EwpGroupMapper
+import com.github.kellpete.intellijewpsupport.model.EwpFileEntry
 import com.github.kellpete.intellijewpsupport.model.EwpGroup
 import com.github.kellpete.intellijewpsupport.model.EwpProject
 import com.github.kellpete.intellijewpsupport.parser.EwpSortFixer
@@ -412,7 +413,8 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
         val selected = tree.selectionPath?.lastPathComponent
         return when (val node = extractTreeNode(selected)) {
             is EwpTreeNode.GroupNode -> node.groupPath
-            is EwpTreeNode.FileNode -> node.groupPath.takeIf { it.isNotEmpty() }
+            is EwpTreeNode.FileNode -> node.groupPath
+            is EwpTreeNode.Root -> emptyList()
             else -> null
         }
     }
@@ -434,7 +436,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             return ewpProject.ewpFile.parent?.path?.let { FileUtil.toSystemIndependentName(it) }
         }
 
-        val fileDirs = collectResolvedFileDirectories(ewpProject.groups)
+        val fileDirs = collectResolvedFileDirectories(ewpProject.groups) + collectDirectories(ewpProject.files)
         val matching = contentRoots.filter { root ->
             fileDirs.any { dir -> FileUtil.startsWith(dir, root) } ||
                     FileUtil.startsWith(FileUtil.toSystemIndependentName(ewpProject.ewpFile.path), root)
@@ -443,17 +445,15 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
             ?: contentRoots.minByOrNull { it.length }
     }
 
+    private fun collectDirectories(files: List<EwpFileEntry>): List<String> = files.mapNotNull { file ->
+        val normalized = FileUtil.toSystemIndependentName(file.resolvedPath ?: return@mapNotNull null)
+        normalized.lastIndexOf('/').takeIf { it > 0 }?.let { normalized.substring(0, it) }
+    }
+
     private fun collectResolvedFileDirectories(groups: List<EwpGroup>): List<String> {
         val result = mutableListOf<String>()
         for (group in groups) {
-            for (file in group.files) {
-                val path = file.resolvedPath ?: continue
-                val normalized = FileUtil.toSystemIndependentName(path)
-                val lastSlash = normalized.lastIndexOf('/')
-                if (lastSlash > 0) {
-                    result += normalized.substring(0, lastSlash)
-                }
-            }
+            result += collectDirectories(group.files)
             result += collectResolvedFileDirectories(group.groups)
         }
         return result

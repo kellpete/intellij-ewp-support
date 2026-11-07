@@ -306,7 +306,7 @@ class EwpFileWriterTest {
     }
 
     @Test
-    fun movesFileRejectsEmptyTargetGroup() {
+    fun movesFileToTopLevel() {
         val input = loadSampleEwp()
         val output = EwpFileWriter.moveNodesInXml(
             input,
@@ -319,7 +319,8 @@ class EwpFileWriterTest {
             ),
         )
 
-        assertEquals(input, output)
+        assertTrue(output != input)
+        assertTrue(output.contains("main.cpp"))
     }
 
     @Test

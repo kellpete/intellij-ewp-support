@@ -26,16 +26,43 @@ class EwpParser {
         require(rootElement.name == "project") { "Root element must be <project>, was <${rootElement.name}>" }
 
         val sortIssues = mutableListOf<EwpSortIssue>()
-        val groups = rootElement.getChildren("group").map { parseGroup(it, ewpFile, emptyList(), sortIssues) }
+        val groups = mutableListOf<EwpGroup>()
+        val files = mutableListOf<EwpFileEntry>()
+        var sawFile = false
+        var groupsAfterFiles = false
+        for (child in rootElement.children) {
+            when (child.name) {
+                "group" -> {
+                    if (sawFile) groupsAfterFiles = true
+                    groups += parseGroup(child, ewpFile, emptyList(), sortIssues)
+                }
+                "file" -> {
+                    sawFile = true
+                    parseFile(child, ewpFile)?.let { files += it }
+                }
+            }
+        }
 
+        sortIssues += EwpSortValidator.validateGroupOrder(groupsAfterFiles, emptyList())
+        sortIssues += EwpSortValidator.validateContainer(groups, files, emptyList())
         sortIssues += EwpSortValidator.validateGroups(groups)
-        val missingFiles = EwpMissingFileValidator.findMissingFiles(groups)
+        val missingFiles = EwpMissingFileValidator.findMissingFiles(groups) +
+            EwpMissingFileValidator.findMissingInFiles(files, emptyList())
 
         return EwpProject(
             ewpFile = ewpFile,
             groups = groups,
             sortIssues = sortIssues,
             missingFiles = missingFiles,
+            files = files,
+        )
+    }
+
+    private fun parseFile(element: Element, ewpFile: VirtualFile): EwpFileEntry? {
+        val rawPath = element.getChildTextTrim("name") ?: return null
+        return EwpFileEntry(
+            rawPath = rawPath,
+            resolvedPath = EwpPathResolver.resolve(ewpFile, rawPath),
         )
     }
 
@@ -66,11 +93,7 @@ class EwpParser {
                 }
                 "file" -> {
                     sawFile = true
-                    val rawPath = child.getChildTextTrim("name") ?: continue
-                    childFiles += EwpFileEntry(
-                        rawPath = rawPath,
-                        resolvedPath = EwpPathResolver.resolve(ewpFile, rawPath),
-                    )
+                    parseFile(child, ewpFile)?.let { childFiles += it }
                 }
             }
         }
