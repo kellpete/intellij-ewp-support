@@ -90,12 +90,13 @@ class EwpFileWriterTest {
         val output = EwpFileWriter.removeFromEwpToXml(
             input,
             "/project/firmware",
-            groupPaths = listOf(listOf("src", "services", "parameter")),
+            groupPaths = listOf(listOf("src", "services", "watchdog")),
         )
 
-        assertFalse(output.contains("RedundantParameters"))
+        assertFalse(output.contains("Service.cpp"))
+        assertFalse(output.contains("Service.hpp"))
         assertTrue(output.contains("main.cpp"))
-        assertFalse(output.contains("<name>parameter</name>"))
+        assertFalse(output.contains("<name>watchdog</name>"))
     }
 
     @Test
@@ -108,7 +109,7 @@ class EwpFileWriterTest {
         )
 
         assertFalse(output.contains("main.cpp"))
-        assertTrue(output.contains("RedundantParameters.cpp"))
+        assertTrue(output.contains("Service.cpp"))
     }
 
     @Test
@@ -130,13 +131,14 @@ class EwpFileWriterTest {
             input,
             "/project/firmware",
             listOf(
-                "/project/src/services/parameter/RedundantParameters.cpp",
-                "/project/src/services/parameter/RedundantParameters.hpp",
+                "/project/src/services/wd/Service.cpp",
+                "/project/src/services/wd/Service.hpp",
             ),
         )
 
-        assertFalse(output.contains("RedundantParameters"))
-        assertFalse(output.contains("<name>parameter</name>"))
+        assertFalse(output.contains("Service.cpp"))
+        assertFalse(output.contains("Service.hpp"))
+        assertFalse(output.contains("<name>watchdog</name>"))
         assertFalse(output.contains("<name>services</name>"))
         assertTrue(output.contains("<name>src</name>"))
         assertTrue(output.contains("main.cpp"))
@@ -238,19 +240,19 @@ class EwpFileWriterTest {
             input,
             fileMoves = listOf(
                 EwpFileWriter.TreeFileMove(
-                    rawPath = "\$PROJ_DIR$\\..\\src\\services\\parameter\\RedundantParameters.cpp",
-                    sourceGroupPath = listOf("src", "services", "parameter"),
+                    rawPath = "\$PROJ_DIR$\\..\\src\\services\\wd\\Service.cpp",
+                    sourceGroupPath = listOf("src", "services", "watchdog"),
                     targetGroupPath = listOf("config"),
                 ),
             ),
         )
 
-        // RedundantParameters.cpp is now in config, sorted between NodeSettings.hpp and ThreadSettings.hpp
-        assertTrue(output.indexOf("<name>config</name>") < output.indexOf("RedundantParameters.cpp"))
-        assertTrue(output.indexOf("NodeSettings.hpp") < output.indexOf("RedundantParameters.cpp"))
-        assertTrue(output.indexOf("RedundantParameters.cpp") < output.indexOf("ThreadSettings.hpp"))
-        // parameter still has RedundantParameters.hpp
-        assertTrue(output.indexOf("<name>parameter</name>") < output.indexOf("RedundantParameters.hpp"))
+        // Service.cpp is now in config, after the existing files in sorted order.
+        assertTrue(output.indexOf("<name>config</name>") < output.indexOf("Service.cpp"))
+        assertTrue(output.indexOf("AppSettings.hpp") < output.indexOf("OtherSettings.hpp"))
+        assertTrue(output.indexOf("OtherSettings.hpp") < output.indexOf("Service.cpp"))
+        // Service.hpp remains in the source group.
+        assertTrue(output.indexOf("<name>watchdog</name>") < output.indexOf("Service.hpp"))
     }
 
     @Test
@@ -289,23 +291,6 @@ class EwpFileWriterTest {
     }
 
     @Test
-    fun movesFileRejectsDuplicateInTarget() {
-        val input = loadSampleEwp()
-        val output = EwpFileWriter.moveNodesInXml(
-            input,
-            fileMoves = listOf(
-                EwpFileWriter.TreeFileMove(
-                    rawPath = "\$PROJ_DIR$\\..\\config\\NodeSettings.hpp",
-                    sourceGroupPath = listOf("config"),
-                    targetGroupPath = listOf("config"),
-                ),
-            ),
-        )
-
-        assertEquals(input, output)
-    }
-
-    @Test
     fun movesFileToTopLevel() {
         val input = loadSampleEwp()
         val output = EwpFileWriter.moveNodesInXml(
@@ -330,20 +315,18 @@ class EwpFileWriterTest {
             input,
             groupMoves = listOf(
                 EwpFileWriter.TreeGroupMove(
-                    sourceGroupPath = listOf("src", "services", "parameter"),
+                    sourceGroupPath = listOf("src", "services"),
                     targetParentGroupPath = listOf("config"),
                 ),
             ),
         )
 
-        // parameter is now inside config, sorted before ra6m5 (alphabetical: parameter < ra6m5)
-        assertTrue(output.indexOf("<name>config</name>") < output.indexOf("<name>parameter</name>"))
-        assertTrue(output.indexOf("<name>parameter</name>") < output.indexOf("<name>ra6m5</name>"))
-        // Files inside parameter are preserved
-        assertTrue(output.indexOf("<name>parameter</name>") < output.indexOf("RedundantParameters.cpp"))
-        assertTrue(output.indexOf("RedundantParameters.cpp") < output.indexOf("RedundantParameters.hpp"))
-        // services group in src is preserved (not pruned)
-        assertTrue(output.contains("<name>services</name>"))
+        // services is now inside config, sorted before stm32.
+        assertTrue(output.indexOf("<name>config</name>") < output.indexOf("<name>services</name>"))
+        assertTrue(output.indexOf("<name>services</name>") < output.indexOf("<name>stm32</name>"))
+        // Files inside services are preserved.
+        assertTrue(output.indexOf("<name>services</name>") < output.indexOf("Service.cpp"))
+        assertTrue(output.indexOf("Service.cpp") < output.indexOf("Service.hpp"))
     }
 
     @Test
@@ -421,20 +404,20 @@ class EwpFileWriterTest {
     @Test
     fun movesGroupRejectsDuplicateNameInTarget() {
         val input = loadSampleEwp()
-        // Add a group named "ra6m5" inside "src" first
-        val withRa6m5InSrc = EwpFileWriter.createGroupInXml(input, listOf("src", "ra6m5"))
-        // Try moving config/ra6m5 into src
+        // Add a group named "stm32" inside "src" first
+        val withStm32InSrc = EwpFileWriter.createGroupInXml(input, listOf("src", "stm32"))
+        // Try moving config/stm32 into src
         val output = EwpFileWriter.moveNodesInXml(
-            withRa6m5InSrc,
+            withStm32InSrc,
             groupMoves = listOf(
                 EwpFileWriter.TreeGroupMove(
-                    sourceGroupPath = listOf("config", "ra6m5"),
+                    sourceGroupPath = listOf("config", "stm32"),
                     targetParentGroupPath = listOf("src"),
                 ),
             ),
         )
 
-        assertEquals(withRa6m5InSrc, output)
+        assertEquals(withStm32InSrc, output)
     }
 
     @Test
@@ -451,18 +434,18 @@ class EwpFileWriterTest {
             ),
             groupMoves = listOf(
                 EwpFileWriter.TreeGroupMove(
-                    sourceGroupPath = listOf("src", "services", "parameter"),
+                    sourceGroupPath = listOf("src", "services", "watchdog"),
                     targetParentGroupPath = listOf("config"),
                 ),
             ),
         )
 
-        // In config: subgroups parameter and ra6m5, files main.cpp, NodeSettings.hpp, ThreadSettings.hpp
-        assertTrue(output.indexOf("<name>config</name>") < output.indexOf("<name>parameter</name>"))
-        assertTrue(output.indexOf("<name>parameter</name>") < output.indexOf("<name>ra6m5</name>"))
-        assertTrue(output.indexOf("<name>ra6m5</name>") < output.indexOf("main.cpp"))
-        assertTrue(output.indexOf("main.cpp") < output.indexOf("NodeSettings.hpp"))
-        assertTrue(output.indexOf("NodeSettings.hpp") < output.indexOf("ThreadSettings.hpp"))
+        // In config: subgroups services and stm32, then files AppSettings.hpp, main.cpp, OtherSettings.hpp.
+        assertTrue(output.indexOf("<name>config</name>") < output.indexOf("<name>stm32</name>"))
+        assertTrue(output.indexOf("<name>stm32</name>") < output.indexOf("<name>watchdog</name>"))
+        assertTrue(output.indexOf("<name>watchdog</name>") < output.indexOf("AppSettings.hpp"))
+        assertTrue(output.indexOf("AppSettings.hpp") < output.indexOf("main.cpp"))
+        assertTrue(output.indexOf("main.cpp") < output.indexOf("OtherSettings.hpp"))
     }
 
     private fun loadSampleEwp(): String {

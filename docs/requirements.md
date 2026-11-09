@@ -120,16 +120,16 @@ files. Also the project root "/" contains no files. Therefore, rule 3 is used. S
     <group>
         <name>config</name>
         <group>
-            <name>ra6m5</name>
+            <name>stm32</name>
             <file>
-                <name>$PROJ_DIR$\..\config\ra6m5\option_setting_memory_init.h</name>
+                <name>$PROJ_DIR$\..\config\stm32\settings.h</name>
             </file>
         </group>
         <file>
-            <name>$PROJ_DIR$\..\config\NodeSettings.hpp</name>
+            <name>$PROJ_DIR$\..\config\AppSettings.hpp</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\config\ThreadSettings.hpp</name>
+            <name>$PROJ_DIR$\..\config\OtherSettings.hpp</name>
         </file>
     </group>
     <group>
@@ -137,12 +137,12 @@ files. Also the project root "/" contains no files. Therefore, rule 3 is used. S
         <group>
             <name>services</name>
             <group>
-                <name>parameter</name>
+                <name>watchdog</name>
                 <file>
-                    <name>$PROJ_DIR$\..\src\services\parameter\RedundantParameters.cpp</name>
+                    <name>$PROJ_DIR$\..\src\services\wd\Service.cpp</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\src\services\parameter\RedundantParameters.hpp</name>
+                    <name>$PROJ_DIR$\..\src\services\wd\Service.hpp</name>
                 </file>
             </group>
         </group>
@@ -150,6 +150,9 @@ files. Also the project root "/" contains no files. Therefore, rule 3 is used. S
             <name>$PROJ_DIR$\..\src\main.cpp</name>
         </file>
     </group>
+    <file>
+        <name>$PROJ_DIR$\..\TopLevelFile.cpp</name>
+    </file>
     <projectSettings>
         <general>
             <resolveSourceForBinaries>true</resolveSourceForBinaries>

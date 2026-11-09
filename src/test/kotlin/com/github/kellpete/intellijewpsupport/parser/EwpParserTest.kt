@@ -36,13 +36,13 @@ class EwpParserTest : BasePlatformTestCase() {
 
         val configGroup = ewpProject.groups[0]
         assertEquals(1, configGroup.groups.size)
-        assertEquals("ra6m5", configGroup.groups[0].name)
+        assertEquals("stm32", configGroup.groups[0].name)
         assertEquals(2, configGroup.files.size)
 
         val servicesGroup = ewpProject.groups[1].groups.single()
         assertEquals("services", servicesGroup.name)
         val parameterGroup = servicesGroup.groups.single()
-        assertEquals("parameter", parameterGroup.name)
+        assertEquals("watchdog", parameterGroup.name)
         assertEquals(2, parameterGroup.files.size)
         assertEquals(1, ewpProject.groups[1].files.size)
     }
