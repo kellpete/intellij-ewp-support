@@ -11,6 +11,10 @@ import com.github.kellpete.intellijewpsupport.parser.EwpSortFixer
 import com.github.kellpete.intellijewpsupport.service.EwpIndexService
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.service
@@ -82,16 +86,22 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         val toolbarRowHeight = ewpComboBox.preferredSize.height
         ewpComboBox.maximumSize = Dimension(Int.MAX_VALUE, toolbarRowHeight)
-        val refreshButton = JButton(AllIcons.Actions.Refresh).apply {
-            toolTipText = EwpBundle["ewpExplorer.refresh"]
-            margin = JBUI.emptyInsets()
-            isFocusable = false
-            preferredSize = JBUI.size(toolbarRowHeight, toolbarRowHeight)
-            addActionListener {
+        val refreshAction = object : DumbAwareAction(
+            EwpBundle["ewpExplorer.refresh"],
+            null,
+            AllIcons.Actions.Refresh,
+        ) {
+            override fun actionPerformed(e: AnActionEvent) {
                 indexService.invalidateAll()
                 reloadEwpFiles()
             }
         }
+        val refreshButton = ActionButton(
+            refreshAction,
+            refreshAction.templatePresentation.clone(),
+            ActionPlaces.TOOLBAR,
+            Dimension(toolbarRowHeight, toolbarRowHeight),
+        )
 
         val toolbar = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
