@@ -12,6 +12,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Correct handling of files placed directly in the project element (outside of groups).
+- EWP explorer no longer expands the whole tree after refreshs or drag and drop; the previous expansion state is
+  preserved.
 
 ## [0.0.5] - 2026-10-30
 

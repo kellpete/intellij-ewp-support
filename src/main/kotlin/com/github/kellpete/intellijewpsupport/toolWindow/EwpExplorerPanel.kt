@@ -49,6 +49,8 @@ import javax.swing.JButton
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
+import javax.swing.event.TreeExpansionEvent
+import javax.swing.event.TreeExpansionListener
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
@@ -58,6 +60,9 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     private val indexService = project.service<EwpIndexService>()
     private val ewpComboBox = ComboBox<VirtualFile>()
     private val tree = SimpleTree()
+    private var lastTreeEwpPath: String? = null
+    private val expandedGroupKeys = mutableSetOf<List<String>>()
+    private var updatingTree = false
     private val statusLabel = JBLabel("", JBLabel.LEFT)
     private val sortWarningLabel = JBLabel("", AllIcons.General.Warning, JBLabel.LEFT)
     private val sortWarningPanel = createSortWarningPanel()
@@ -112,6 +117,7 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
 
         tree.setRootVisible(true)
         tree.cellRenderer = EwpTreeCellRenderer()
+        installExpansionTracking()
         tree.dragEnabled = true
         tree.dropMode = DropMode.ON
         tree.transferHandler = EwpTreeTransferHandler(
@@ -401,12 +407,79 @@ class EwpExplorerPanel(private val project: Project) : BorderLayoutPanel() {
     }
 
     private fun setTreeProject(ewpProject: EwpProject, selectGroupPath: List<String>? = null) {
-        tree.model = EwpTreeStructure.buildTreeModel(ewpProject)
-        tree.setRootVisible(true)
-        TreeUtil.expandAll(tree)
-        if (selectGroupPath != null) {
-            selectGroup(selectGroupPath)
+        val ewpPath = ewpProject.ewpFile.path
+        val expandedGroups = if (lastTreeEwpPath == ewpPath) expandedGroupKeys.toSet() else null
+        updatingTree = true
+        try {
+            tree.model = EwpTreeStructure.buildTreeModel(ewpProject)
+            tree.setRootVisible(true)
+            if (expandedGroups == null) {
+                TreeUtil.expandAll(tree)
+            } else {
+                restoreExpandedGroups(expandedGroups)
+            }
+            if (selectGroupPath != null) {
+                selectGroup(selectGroupPath)
+            }
+        } finally {
+            updatingTree = false
         }
+        lastTreeEwpPath = ewpPath
+        expandedGroupKeys.clear()
+        expandedGroupKeys.addAll(collectExpandedGroups())
+    }
+
+    private fun groupKey(pathComponent: Any?): List<String>? =
+        when (val node = extractTreeNode(pathComponent)) {
+            is EwpTreeNode.GroupNode -> node.groupPath
+            is EwpTreeNode.Root -> emptyList()
+            else -> null
+        }
+
+    private fun installExpansionTracking() {
+        tree.addTreeExpansionListener(object : TreeExpansionListener {
+            override fun treeExpanded(event: TreeExpansionEvent) {
+                if (updatingTree) return
+                groupKey(event.path.lastPathComponent)?.let { expandedGroupKeys.add(it) }
+            }
+
+            override fun treeCollapsed(event: TreeExpansionEvent) {
+                if (updatingTree) return
+                groupKey(event.path.lastPathComponent)?.let { expandedGroupKeys.remove(it) }
+            }
+        })
+    }
+
+    private fun collectExpandedGroups(): Set<List<String>> {
+        val root = tree.model.root as? DefaultMutableTreeNode ?: return emptySet()
+        val expanded = mutableSetOf<List<String>>()
+        fun visit(node: DefaultMutableTreeNode) {
+            val key = groupKey(node) ?: return
+            if (!tree.isExpanded(TreePath(node.path))) return
+            expanded.add(key)
+            for (i in 0 until node.childCount) {
+                (node.getChildAt(i) as? DefaultMutableTreeNode)?.let(::visit)
+            }
+        }
+        visit(root)
+        return expanded
+    }
+
+    private fun restoreExpandedGroups(expanded: Set<List<String>>) {
+        val root = tree.model.root as? DefaultMutableTreeNode ?: return
+        fun visit(node: DefaultMutableTreeNode) {
+            val key = when (val treeNode = extractTreeNode(node)) {
+                is EwpTreeNode.GroupNode -> treeNode.groupPath
+                is EwpTreeNode.Root -> emptyList()
+                else -> return
+            }
+            if (key !in expanded) return
+            tree.expandPath(TreePath(node.path))
+            for (i in 0 until node.childCount) {
+                (node.getChildAt(i) as? DefaultMutableTreeNode)?.let(::visit)
+            }
+        }
+        visit(root)
     }
 
     private fun resolveNewGroupParentPath(): List<String> {
