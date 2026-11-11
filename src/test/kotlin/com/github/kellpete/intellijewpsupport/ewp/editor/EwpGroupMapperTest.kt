@@ -23,6 +23,19 @@ class EwpGroupMapperTest {
     }
 
     @Test
+    fun obviousMappingPrefersGroupWithMostFilesInDirectory() {
+        val mapper = mapper(
+            files = listOf(
+                fileAt("/project/src/a.cpp", listOf("app")),
+                fileAt("/project/src/b.cpp", listOf("app")),
+                fileAt("/project/src/c.cpp", listOf("other")),
+            ),
+        )
+
+        assertEquals(listOf("app"), mapper.mapDirectory("/project/src"))
+    }
+
+    @Test
     fun usesParentWalkToAddSubgroup() {
         val mapper = mapper(
             files = listOf(

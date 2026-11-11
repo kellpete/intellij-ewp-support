@@ -47,7 +47,11 @@ class EwpGroupMapper(
     private fun obviousMapping(directory: String): List<String>? {
         val matches = fileLocations.filter { it.directory == directory }
         if (matches.isEmpty()) return null
-        return matches.first().groupPath
+        return matches
+            .groupingBy { it.groupPath }
+            .eachCount()
+            .maxWithOrNull(compareBy({ it.value }, { -it.key.size }, { it.key.joinToString() }))
+            ?.key
     }
 
     private fun obviousDirectory(groupPath: List<String>): String? {
