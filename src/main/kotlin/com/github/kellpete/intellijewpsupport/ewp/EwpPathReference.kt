@@ -32,7 +32,6 @@ class EwpPathReference(
     private fun resolveViaAbsolutePath(ewpVirtualFile: VirtualFile): VirtualFile? =
         EwpPathResolver.resolve(ewpVirtualFile, rawPath)?.let { absolutePath ->
             LocalFileSystem.getInstance().findFileByPath(absolutePath)
-                ?: LocalFileSystem.getInstance().refreshAndFindFileByPath(absolutePath)
         }
 
     private fun relativePathFromProjDir(): String {

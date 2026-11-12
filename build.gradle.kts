@@ -1,4 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
@@ -27,4 +28,9 @@ dependencies {
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.CLion)
     }
+}
+
+tasks.named<PrepareSandboxTask>("prepareTestSandbox") {
+    // STM32 auto-setup walks the project `src/` tree and logs ERROR on light-test temp VFS paths.
+    disabledPlugins.add("com.intellij.clion.stm32")
 }

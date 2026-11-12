@@ -21,7 +21,9 @@ class EwpPathReferenceTest : BasePlatformTestCase() {
     }
 
     fun testCollectsProjDirPathReferences() {
-        myFixture.addFileToProject("src/main.txt", "content\n")
+        // Avoid a top-level `src/` folder: bundled CLion STM32 detection treats it like a Cube project
+        // and logs errors during async startup (flaky TestLogger failures on CI).
+        myFixture.addFileToProject("lib/main.txt", "content\n")
         val ewpPsi = myFixture.configureByText(
             "project.ewp",
             """
@@ -30,7 +32,7 @@ class EwpPathReferenceTest : BasePlatformTestCase() {
                 <group>
                     <name>src</name>
                     <file>
-                        <name>${'$'}PROJ_DIR${'$'}\src\main.txt</name>
+                        <name>${'$'}PROJ_DIR${'$'}\lib\main.txt</name>
                     </file>
                 </group>
             </project>
